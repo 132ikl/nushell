@@ -7,6 +7,7 @@ use nu_protocol::{engine::StateWorkingSet, Span};
 use nu_utils::get_ls_colors;
 use std::ffi::OsStr;
 use std::path::{is_separator, Component, Path, PathBuf, MAIN_SEPARATOR as SEP};
+use std::{env, path};
 
 fn complete_rec(
     partial: &[String],
@@ -113,13 +114,20 @@ pub fn complete_item(
             get_ls_colors(ls_colors_env_str)
         });
     let mut original_cwd = OriginalCwd::None;
-    let mut components_vec: Vec<Component> = Path::new(&partial).components().collect();
 
-    // Path components that end with a single "." get normalized away,
-    // so if the partial path ends in a literal "." we must add it back in manually
-    if partial.ends_with('.') && partial.len() > 1 {
-        components_vec.push(Component::Normal(OsStr::new(".")));
-    };
+    // Path components that end with a single "." get normalized away, but we want to
+    // treat the last component of the partial match as verbatim, so parse parents into
+    // regular components and treat the final component as a Normal
+    let split: Vec<&str> = partial.split(is_separator).collect();
+    let split_len = split.len();
+    let partial_final: String = (*split.last().unwrap()).into();
+    let partial_parents_comp: Vec<&str> = split.into_iter().take(split_len - 1).collect();
+    let partial_parents: String = partial_parents_comp.join(&SEP.to_string());
+    let mut components_vec: Vec<Component> = Path::new(&partial_parents).components().collect();
+    if !partial_final.is_empty() {
+        components_vec.push(Component::Normal(OsStr::new(&partial_final)));
+    }
+
     let mut components = components_vec.into_iter().peekable();
 
     let mut cwd = match components.peek().cloned() {
