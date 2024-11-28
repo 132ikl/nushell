@@ -16,6 +16,7 @@ use lru::LruCache;
 use nu_path::AbsolutePathBuf;
 use std::{
     collections::HashMap,
+    io::{self, BufRead},
     num::NonZeroUsize,
     path::PathBuf,
     sync::{
@@ -216,7 +217,31 @@ impl EngineState {
             Arc::make_mut(&mut self.decls).extend(delta.decls);
         }
         if !delta.blocks.is_empty() {
-            Arc::make_mut(&mut self.blocks).extend(delta.blocks);
+            let blocks: Vec<Arc<Block>> = delta
+                .blocks
+                .into_iter()
+                .map(|block| {
+                    if block.signature.name == "foo" {
+                        let mut new_block = Block::clone(&block);
+                        println!(
+                            "{}",
+                            serde_json::to_string(&new_block.ir_block.clone().unwrap()).unwrap()
+                        );
+                        let stdin = io::stdin();
+                        let vec: Result<Vec<String>, _> = stdin.lock().lines().collect();
+                        let line = vec.unwrap().join("");
+                        if let Ok(ir_block) = serde_json::from_str(line.as_str()) {
+                            new_block.ir_block = ir_block;
+                            Arc::new(new_block)
+                        } else {
+                            block
+                        }
+                    } else {
+                        block
+                    }
+                })
+                .collect();
+            Arc::make_mut(&mut self.blocks).extend(blocks);
         }
         if !delta.modules.is_empty() {
             Arc::make_mut(&mut self.modules).extend(delta.modules);

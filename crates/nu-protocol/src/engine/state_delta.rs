@@ -17,11 +17,11 @@ use crate::{PluginRegistryItem, RegisteredPlugin};
 pub struct StateDelta {
     pub(super) files: Vec<CachedFile>,
     pub(super) virtual_paths: Vec<(String, VirtualPath)>,
-    pub(super) vars: Vec<Variable>,          // indexed by VarId
-    pub(super) decls: Vec<Box<dyn Command>>, // indexed by DeclId
-    pub blocks: Vec<Arc<Block>>,             // indexed by BlockId
-    pub(super) modules: Vec<Arc<Module>>,    // indexed by ModuleId
-    pub spans: Vec<Span>,                    // indexed by SpanId
+    pub(super) vars: Vec<Variable>,       // indexed by VarId
+    pub decls: Vec<Box<dyn Command>>,     // indexed by DeclId
+    pub blocks: Vec<Arc<Block>>,          // indexed by BlockId
+    pub(super) modules: Vec<Arc<Module>>, // indexed by ModuleId
+    pub spans: Vec<Span>,                 // indexed by SpanId
     pub(super) doccomments: Doccomments,
     pub scope: Vec<ScopeFrame>,
     #[cfg(feature = "plugin")]
