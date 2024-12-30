@@ -466,6 +466,13 @@ fn handle_table_command(mut input: CmdInput<'_>) -> ShellResult<PipelineData> {
             input.data = PipelineData::Empty;
             handle_row_stream(input, stream, metadata)
         }
+        PipelineData::Value(Value::String { val, styles, .. }, ..) if !styles.is_empty() => {
+            let mut string = val;
+            for style in styles {
+                string = style.apply_ansi(string);
+            }
+            Ok(Value::string(string, span).into_pipeline_data())
+        }
         x => Ok(x),
     }
 }

@@ -5,7 +5,6 @@ mod from_value;
 mod glob;
 mod into_value;
 mod range;
-mod style;
 #[cfg(test)]
 mod test_derive;
 
@@ -19,6 +18,7 @@ pub use into_value::{IntoValue, TryIntoValue};
 pub use range::{FloatRange, IntRange, Range};
 pub use record::Record;
 use style::Style;
+pub mod style;
 
 use crate::{
     ast::{Bits, Boolean, CellPath, Comparison, Math, Operator, PathMember},

@@ -7,6 +7,7 @@ mod guess_width;
 mod parse;
 mod split;
 mod str_;
+mod style;
 
 pub use base::{
     DecodeBase32, DecodeBase32Hex, DecodeBase64, DecodeHex, EncodeBase32, EncodeBase32Hex,
@@ -19,6 +20,7 @@ pub use format::*;
 pub use parse::*;
 pub use split::*;
 pub use str_::*;
+pub use style::*;
 
 use nu_engine::CallExt;
 use nu_protocol::{

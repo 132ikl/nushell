@@ -4068,6 +4068,7 @@ dependencies = [
  "memchr",
  "miette",
  "nix 0.29.0",
+ "nu-ansi-term",
  "nu-derive-value",
  "nu-path",
  "nu-system",
