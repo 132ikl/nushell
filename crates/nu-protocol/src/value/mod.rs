@@ -5,6 +5,7 @@ mod from_value;
 mod glob;
 mod into_value;
 mod range;
+mod style;
 #[cfg(test)]
 mod test_derive;
 
@@ -17,6 +18,7 @@ pub use glob::*;
 pub use into_value::{IntoValue, TryIntoValue};
 pub use range::{FloatRange, IntRange, Range};
 pub use record::Record;
+use style::Style;
 
 use crate::{
     ast::{Bits, Boolean, CellPath, Comparison, Math, Operator, PathMember},
@@ -69,6 +71,7 @@ pub enum Value {
     },
     String {
         val: String,
+        styles: Vec<Style>,
         // note: spans are being refactored out of Value
         // please use .span() instead of matching this span value
         #[serde(rename = "span")]
@@ -189,8 +192,13 @@ impl Clone for Value {
                 internal_span: *internal_span,
             },
             Value::Float { val, internal_span } => Value::float(*val, *internal_span),
-            Value::String { val, internal_span } => Value::String {
+            Value::String {
+                val,
+                styles,
+                internal_span,
+            } => Value::String {
                 val: val.clone(),
+                styles: styles.clone(),
                 internal_span: *internal_span,
             },
             Value::Glob {
@@ -1880,6 +1888,15 @@ impl Value {
     pub fn string(val: impl Into<String>, span: Span) -> Value {
         Value::String {
             val: val.into(),
+            styles: Vec::new(),
+            internal_span: span,
+        }
+    }
+
+    pub fn styled_string(val: impl Into<String>, styles: Vec<Style>, span: Span) -> Value {
+        Value::String {
+            val: val.into(),
+            styles,
             internal_span: span,
         }
     }
