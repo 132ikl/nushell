@@ -1,6 +1,6 @@
 use nu_cmd_base::hook::eval_hook;
 use nu_engine::{command_prelude::*, env_to_strings};
-use nu_path::{dots::expand_ndots_safe, expand_tilde, AbsolutePath};
+use nu_path::{dots::expand_ndots, expand_tilde, AbsolutePath};
 use nu_protocol::{
     did_you_mean, process::ChildProcess, ByteStream, NuGlob, OutDest, Signals, UseAnsiColoring,
 };
@@ -65,9 +65,7 @@ impl Command for External {
 
         let expanded_name = match &name {
             // Expand tilde and ndots on the name if it's a bare string / glob (#13000)
-            Value::Glob { no_expand, .. } if !*no_expand => {
-                expand_ndots_safe(expand_tilde(&*name_str))
-            }
+            Value::Glob { no_expand, .. } if !*no_expand => expand_ndots(expand_tilde(&*name_str)),
             _ => Path::new(&*name_str).to_owned(),
         };
 
@@ -343,7 +341,7 @@ fn expand_glob(
     // For an argument that isn't a glob, just do the `expand_tilde`
     // and `expand_ndots` expansion
     if !nu_glob::is_glob(arg) {
-        let path = expand_ndots_safe(expand_tilde(arg));
+        let path = expand_ndots(expand_tilde(arg));
         return Ok(vec![path.into()]);
     }
 

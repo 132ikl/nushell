@@ -16,6 +16,10 @@ pub fn expand_ndots(path: impl AsRef<Path>) -> PathBuf {
 
     let path = path.as_ref();
 
+    if !should_expand_ndots(path) {
+        return path.to_owned();
+    }
+
     let mut result = PathBuf::with_capacity(path.as_os_str().len());
     for component in crate::components(path) {
         match component {
@@ -73,21 +77,25 @@ pub fn expand_dots(path: impl AsRef<Path>) -> PathBuf {
     simiplified(&result)
 }
 
-/// Expand ndots, but only if it looks like it probably contains them, because there is some lossy
-/// path normalization that happens.
-pub fn expand_ndots_safe(path: impl AsRef<Path>) -> PathBuf {
+/// Determine if ndots should be expanded.
+///
+/// Should only expand if it looks like the path probably contains them,
+/// because there is some lossy path normalization that happens.
+fn should_expand_ndots(path: impl AsRef<Path>) -> bool {
     let string = path.as_ref().to_string_lossy();
+    dbg!(&string);
 
     // Use ndots if it contains at least `...`, since that's the minimum trigger point.
+    string.contains("...")
     // Don't use it if it contains ://, because that looks like a URL scheme and the path normalization
     // will mess with that.
+        && !string.contains("://")
     // Don't use it if it starts with `./`, as to not break golang wildcard syntax
     // (since generally you're probably not using `./` with ndots)
-    if string.contains("...") && !string.contains("://") && !string.starts_with("./") {
-        expand_ndots(path)
-    } else {
-        path.as_ref().to_owned()
-    }
+        && !string.starts_with("./")
+    // Covers the `./` case for internal commands, since the path will already be expanded by the time we recieve it.
+    // If we see `/./...`, then the user probably typed `./...(.+)` and it was expanded
+        && !string.contains("/./...")
 }
 
 #[cfg(windows)]
@@ -188,9 +196,9 @@ mod test_expand_ndots {
     }
 
     #[test]
-    fn ndots_safe_leading_dotslash() {
+    fn leading_dotslash() {
         let path = Path::new("./...");
-        assert_path_eq!(expand_ndots_safe(path), "./...");
+        assert_path_eq!(expand_ndots(path), "./...");
     }
 }
 
