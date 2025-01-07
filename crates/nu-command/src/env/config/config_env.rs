@@ -38,12 +38,12 @@ impl Command for ConfigEnv {
             },
             Example {
                 description: "pretty-print a commented `env.nu` that explains common settings",
-                example: "config env --doc | nu-highlight,",
+                example: "config env --doc | nu-highlight",
                 result: None,
             },
             Example {
                 description: "pretty-print the internal `env.nu` file which is loaded before the user's environment",
-                example: "config env --default | nu-highlight,",
+                example: "config env --default | nu-highlight",
                 result: None,
             },
         ]
