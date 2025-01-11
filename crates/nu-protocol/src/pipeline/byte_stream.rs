@@ -2,6 +2,7 @@
 #[cfg(feature = "os")]
 use crate::process::{ChildPipe, ChildProcess};
 use crate::{ErrSpan, IntoSpanned, PipelineData, ShellError, Signals, Span, Type, Value};
+use blocking::Unblock;
 use futures_lite::AsyncReadExt;
 use serde::{Deserialize, Serialize};
 #[cfg(unix)]
@@ -499,11 +500,12 @@ impl ByteStream {
     ///
     /// Any trailing new lines are kept in the returned [`Vec`].
     pub fn into_bytes(self) -> Result<Vec<u8>, ShellError> {
-        // todo!() ctrlc
         match self.stream {
-            ByteStreamSource::Read(mut read) => {
+            ByteStreamSource::Read(read) => {
                 let mut buf = Vec::new();
-                read.read_to_end(&mut buf).err_span(self.span)?;
+                let mut read = Unblock::new(read);
+                let fut = read.read_to_end(&mut buf);
+                self.signals.interrupt_protect_err_span(fut, self.span)?;
                 Ok(buf)
             }
             ByteStreamSource::File(file) => {

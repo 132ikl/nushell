@@ -106,13 +106,12 @@ impl Signals {
     ///
     /// If you have some other Error type which implements [`ErrSpan`],
     /// consider using [`interrupt_protect_err_span`](Self::interrupt_protect_err_span).
-    pub fn interrupt_protect_result<T, E>(
+    pub fn interrupt_protect_result<T>(
         &self,
         fut: impl Future<Output = Result<T, ShellError>>,
     ) -> Result<T, ShellError>
     where
         T: Send + 'static,
-        E: Into<ShellError> + Send,
     {
         match self.interrupt_protect(fut) {
             InterruptResult::Ok(inner) => inner,

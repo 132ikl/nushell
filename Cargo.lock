@@ -4171,6 +4171,7 @@ name = "nu-protocol"
 version = "0.101.1"
 dependencies = [
  "async-fs",
+ "blocking",
  "brotli",
  "byte-unit",
  "bytes",

@@ -22,6 +22,7 @@ nu-system = { path = "../nu-system", version = "0.101.1" }
 nu-derive-value = { path = "../nu-derive-value", version = "0.101.1" }
 
 async-fs = { workspace = true }
+blocking = { workspace = true }
 brotli = { workspace = true, optional = true }
 bytes = { workspace = true }
 byte-unit = { version = "5.1" }
