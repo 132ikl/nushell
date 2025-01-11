@@ -1,4 +1,4 @@
-use crate::{ErrSpan, ShellError, Span, Spanned, IntoSpanned};
+use crate::{ErrSpan, IntoSpanned, ShellError, Span, Spanned};
 use std::{
     future::Future,
     sync::{
@@ -8,9 +8,9 @@ use std::{
     task::{Context, Poll},
 };
 
+#[cfg(feature = "async")]
 use futures_lite::{future, FutureExt};
 use serde::{Deserialize, Serialize};
-
 
 /// Used to check for signals to suspend or terminate the execution of Nushell code.
 ///
@@ -80,6 +80,7 @@ impl Signals {
     }
 
     /// Polls the [interrupted](`Self::interrupted`) method until an interrupt is triggered.
+    #[cfg(feature = "async")]
     async fn interrupted_async(&self) {
         let poller = |_: &mut Context<'_>| match self.interrupted() {
             true => Poll::Ready(()),
@@ -90,6 +91,7 @@ impl Signals {
     }
 
     /// Interrupt protect an async operation.
+    #[cfg(feature = "async")]
     pub fn interrupt_protect<T>(&self, fut: impl Future<Output = T>) -> InterruptResult<T> {
         let blocking = async {
             let out = fut.await;
@@ -102,10 +104,12 @@ impl Signals {
         future::block_on(blocking.or(interrupt))
     }
 
+
     /// Interrupt protect an async operation which returns [Result<T, ShellError>].
     ///
     /// If you have some other Error type which implements [`ErrSpan`],
     /// consider using [`interrupt_protect_err_span`](Self::interrupt_protect_err_span).
+    #[cfg(feature = "async")]
     pub fn interrupt_protect_result<T>(
         &self,
         fut: impl Future<Output = Result<T, ShellError>>,
@@ -123,6 +127,7 @@ impl Signals {
     /// [`Result<T,E>`] into a [`Result<T, ShellError>`].
     ///
     /// The error type `E` must implement [`ErrSpan`].
+    #[cfg(feature = "async")]
     pub fn interrupt_protect_err_span<T, E>(
         &self,
         fut: impl Future<Output = Result<T, E>>,
@@ -131,13 +136,35 @@ impl Signals {
     where
         T: Send + 'static,
         Result<T, E>: ErrSpan,
-        Spanned<E>: Into<ShellError>
+        Spanned<E>: Into<ShellError>,
     {
         match self.interrupt_protect(fut) {
             // TODO(async): inner.err_span().map_err(Into<ShellError>::into) doesn't seem to work?
             InterruptResult::Ok(inner) => inner.map_err(|err| err.into_spanned(span).into()),
             InterruptResult::Interrupted => Err(ShellError::InterruptedByUser { span: Some(span) }),
         }
+    }
+
+    /// No-op for when async is disabled.
+    #[cfg(not(feature = "async"))]
+    pub fn interrupt_protect<T>(&self, val: T) -> InterruptResult<T> {
+        InterruptResult::Ok(val)
+    }
+
+    /// No-op for when async is disabled.
+    #[cfg(not(feature = "async"))]
+    pub fn interrupt_protect_result<T>(&self, val: Result<T, ShellError>) -> Result<T, ShellError> {
+        val
+    }
+
+    /// No-op for when async is disabled.
+    #[cfg(not(feature = "async"))]
+    pub fn interrupt_protect_err_span<T, E>(&self, val: Result<T, E>, span: Span) -> Result<T, ShellError>
+    where
+        Result<T, E>: ErrSpan,
+        Spanned<E>: Into<ShellError>,
+    {
+        val.map_err(|err| err.into_spanned(span).into())
     }
 
     pub(crate) fn is_empty(&self) -> bool {

@@ -21,8 +21,8 @@ nu-path = { path = "../nu-path", version = "0.101.1" }
 nu-system = { path = "../nu-system", version = "0.101.1" }
 nu-derive-value = { path = "../nu-derive-value", version = "0.101.1" }
 
-async-fs = { workspace = true }
-blocking = { workspace = true }
+async-fs = { workspace = true, optional = true }
+blocking = { workspace = true, optional = true }
 brotli = { workspace = true, optional = true }
 bytes = { workspace = true }
 byte-unit = { version = "5.1" }
@@ -30,7 +30,7 @@ chrono = { workspace = true, features = [ "serde", "std", "unstable-locales" ], 
 chrono-humanize = { workspace = true }
 dirs = { workspace = true }
 fancy-regex = { workspace = true }
-futures-lite = { workspace = true }
+futures-lite = { workspace = true, optional = true }
 heck = { workspace = true }
 indexmap = { workspace = true }
 lru = { workspace = true }
@@ -54,12 +54,17 @@ dirs-sys = { workspace = true }
 windows-sys = { workspace = true }
 
 [features]
-default = ["os"]
+default = ["os", "async"]
 os = [
   "nu-utils/os",
   "os_pipe",
 ]
-
+async = [
+  "os",
+  "async-fs",
+  "blocking",
+  "futures-lite"
+]
 plugin = [
   "brotli",
   "os",

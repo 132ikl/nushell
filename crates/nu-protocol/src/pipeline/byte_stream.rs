@@ -2,7 +2,9 @@
 #[cfg(feature = "os")]
 use crate::process::{ChildPipe, ChildProcess};
 use crate::{ErrSpan, IntoSpanned, PipelineData, ShellError, Signals, Span, Type, Value};
+#[cfg(feature = "async")]
 use blocking::Unblock;
+#[cfg(feature = "async")]
 use futures_lite::AsyncReadExt;
 use serde::{Deserialize, Serialize};
 #[cfg(unix)]
@@ -503,14 +505,24 @@ impl ByteStream {
         match self.stream {
             ByteStreamSource::Read(read) => {
                 let mut buf = Vec::new();
+
+                #[cfg(feature = "async")]
                 let mut read = Unblock::new(read);
+                #[cfg(not(feature = "async"))]
+                let mut read = read;
+
                 let fut = read.read_to_end(&mut buf);
                 self.signals.interrupt_protect_err_span(fut, self.span)?;
                 Ok(buf)
             }
             ByteStreamSource::File(file) => {
                 let mut buf = Vec::new();
+
+                #[cfg(feature = "async")]
                 let mut file = async_fs::File::from(file);
+                #[cfg(not(feature = "async"))]
+                let mut file = file;
+
                 let fut = file.read_to_end(&mut buf);
                 self.signals.interrupt_protect_err_span(fut, self.span)?;
                 Ok(buf)
