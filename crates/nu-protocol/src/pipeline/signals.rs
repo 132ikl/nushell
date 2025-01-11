@@ -1,9 +1,12 @@
 use crate::{ShellError, Span};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    }, task::{Context, Poll}
 };
 
+use futures_lite::future;
 use serde::{Deserialize, Serialize};
 
 /// Used to check for signals to suspend or terminate the execution of Nushell code.
@@ -71,6 +74,15 @@ impl Signals {
         self.signals
             .as_deref()
             .is_some_and(|b| b.load(Ordering::Relaxed))
+    }
+
+    pub async fn interrupted_async(&self) {
+        let poller = |_: &mut Context<'_>| match self.interrupted() {
+            true => Poll::Ready(()),
+            false => Poll::Pending,
+        };
+        future::poll_fn(poller).await;
+        self.reset();
     }
 
     pub(crate) fn is_empty(&self) -> bool {

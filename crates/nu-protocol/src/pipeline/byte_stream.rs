@@ -2,6 +2,7 @@
 #[cfg(feature = "os")]
 use crate::process::{ChildPipe, ChildProcess};
 use crate::{ErrSpan, IntoSpanned, PipelineData, ShellError, Signals, Span, Type, Value};
+use futures_lite::{future, AsyncReadExt, FutureExt};
 use serde::{Deserialize, Serialize};
 #[cfg(unix)]
 use std::os::fd::OwnedFd;
@@ -505,9 +506,12 @@ impl ByteStream {
                 read.read_to_end(&mut buf).err_span(self.span)?;
                 Ok(buf)
             }
-            ByteStreamSource::File(mut file) => {
+            ByteStreamSource::File(file) => {
                 let mut buf = Vec::new();
-                file.read_to_end(&mut buf).err_span(self.span)?;
+                let mut file = async_fs::File::from(file);
+                let file_fut = async { file.read_to_end(&mut buf).await.map(|_| ()) };
+                let int_fut = async { self.signals.interrupted_async().await; Ok(()) };
+                future::block_on(file_fut.or(int_fut)).err_span(self.span)?;
                 Ok(buf)
             }
             #[cfg(feature = "os")]
