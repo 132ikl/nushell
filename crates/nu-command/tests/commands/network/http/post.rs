@@ -4,7 +4,7 @@ use mockito::{Matcher, Server, ServerOpts};
 use nu_test_support::{nu, pipeline};
 
 #[test]
-fn http_post_is_success() {
+fn TEST_HACK_http_post_is_success() {
     let mut server = Server::new();
 
     let _mock = server.mock("POST", "/").match_body("foo").create();
@@ -22,7 +22,7 @@ fn http_post_is_success() {
     assert!(actual.out.is_empty())
 }
 #[test]
-fn http_post_is_success_pipeline() {
+fn TEST_HACK_http_post_is_success_pipeline() {
     let mut server = Server::new();
 
     let _mock = server.mock("POST", "/").match_body("foo").create();
@@ -41,7 +41,7 @@ fn http_post_is_success_pipeline() {
 }
 
 #[test]
-fn http_post_failed_due_to_server_error() {
+fn TEST_HACK_http_post_failed_due_to_server_error() {
     let mut server = Server::new();
 
     let _mock = server.mock("POST", "/").with_status(400).create();
@@ -60,7 +60,7 @@ fn http_post_failed_due_to_server_error() {
 }
 
 #[test]
-fn http_post_failed_due_to_missing_body() {
+fn TEST_HACK_http_post_failed_due_to_missing_body() {
     let mut server = Server::new();
 
     let _mock = server.mock("POST", "/").create();
@@ -81,7 +81,7 @@ fn http_post_failed_due_to_missing_body() {
 }
 
 #[test]
-fn http_post_failed_due_to_unexpected_body() {
+fn TEST_HACK_http_post_failed_due_to_unexpected_body() {
     let mut server = Server::new();
 
     let _mock = server.mock("POST", "/").match_body("foo").create();
@@ -100,7 +100,7 @@ fn http_post_failed_due_to_unexpected_body() {
 }
 
 #[test]
-fn http_post_json_is_success() {
+fn TEST_HACK_http_post_json_is_success() {
     let mut server = Server::new();
 
     let mock = server
@@ -118,7 +118,7 @@ fn http_post_json_is_success() {
 }
 
 #[test]
-fn http_post_json_string_is_success() {
+fn TEST_HACK_http_post_json_string_is_success() {
     let mut server = Server::new();
 
     let mock = server
@@ -136,7 +136,7 @@ fn http_post_json_string_is_success() {
 }
 
 #[test]
-fn http_post_json_list_is_success() {
+fn TEST_HACK_http_post_json_list_is_success() {
     let mut server = Server::new();
 
     let mock = server
@@ -154,7 +154,7 @@ fn http_post_json_list_is_success() {
 }
 
 #[test]
-fn http_post_json_int_is_success() {
+fn TEST_HACK_http_post_json_int_is_success() {
     let mut server = Server::new();
 
     let mock = server.mock("POST", "/").match_body(r#"50"#).create();
@@ -169,7 +169,7 @@ fn http_post_json_int_is_success() {
 }
 
 #[test]
-fn http_post_json_raw_string_is_success() {
+fn TEST_HACK_http_post_json_raw_string_is_success() {
     let mut server = Server::new();
 
     let mock = server.mock("POST", "/").match_body(r#""test""#).create();
@@ -184,7 +184,7 @@ fn http_post_json_raw_string_is_success() {
 }
 
 #[test]
-fn http_post_follows_redirect() {
+fn TEST_HACK_http_post_follows_redirect() {
     let mut server = Server::new();
 
     let _mock = server.mock("GET", "/bar").with_body("bar").create();
@@ -202,7 +202,7 @@ fn http_post_follows_redirect() {
 }
 
 #[test]
-fn http_post_redirect_mode_manual() {
+fn TEST_HACK_http_post_redirect_mode_manual() {
     let mut server = Server::new();
 
     let _mock = server
@@ -224,7 +224,7 @@ fn http_post_redirect_mode_manual() {
 }
 
 #[test]
-fn http_post_redirect_mode_error() {
+fn TEST_HACK_http_post_redirect_mode_error() {
     let mut server = Server::new();
 
     let _mock = server
@@ -248,7 +248,7 @@ fn http_post_redirect_mode_error() {
     ));
 }
 #[test]
-fn http_post_multipart_is_success() {
+fn TEST_HACK_http_post_multipart_is_success() {
     let mut server = Server::new_with_opts(ServerOpts {
         assert_on_drop: true,
         ..Default::default()
@@ -280,7 +280,7 @@ fn http_post_multipart_is_success() {
 }
 
 #[test]
-fn http_post_timeout() {
+fn TEST_HACK_http_post_timeout() {
     let mut server = Server::new();
     let _mock = server
         .mock("POST", "/")

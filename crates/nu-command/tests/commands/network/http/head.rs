@@ -2,7 +2,7 @@ use mockito::Server;
 use nu_test_support::{nu, pipeline};
 
 #[test]
-fn http_head_is_success() {
+fn TEST_HACK_http_head_is_success() {
     let mut server = Server::new();
 
     let _mock = server.mock("HEAD", "/").with_header("foo", "bar").create();
@@ -22,7 +22,7 @@ fn http_head_is_success() {
 }
 
 #[test]
-fn http_head_failed_due_to_server_error() {
+fn TEST_HACK_http_head_failed_due_to_server_error() {
     let mut server = Server::new();
 
     let _mock = server.mock("HEAD", "/").with_status(400).create();
@@ -41,7 +41,7 @@ fn http_head_failed_due_to_server_error() {
 }
 
 #[test]
-fn http_head_follows_redirect() {
+fn TEST_HACK_http_head_follows_redirect() {
     let mut server = Server::new();
 
     let _mock = server
@@ -66,7 +66,7 @@ fn http_head_follows_redirect() {
 }
 
 #[test]
-fn http_head_redirect_mode_manual() {
+fn TEST_HACK_http_head_redirect_mode_manual() {
     let mut server = Server::new();
 
     let _mock = server
@@ -88,7 +88,7 @@ fn http_head_redirect_mode_manual() {
 }
 
 #[test]
-fn http_head_redirect_mode_error() {
+fn TEST_HACK_http_head_redirect_mode_error() {
     let mut server = Server::new();
 
     let _mock = server

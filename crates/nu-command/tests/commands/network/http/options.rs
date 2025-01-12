@@ -4,7 +4,7 @@ use mockito::Server;
 use nu_test_support::{nu, pipeline};
 
 #[test]
-fn http_options_is_success() {
+fn TEST_HACK_http_options_is_success() {
     let mut server = Server::new();
 
     let _mock = server
@@ -26,7 +26,7 @@ fn http_options_is_success() {
 }
 
 #[test]
-fn http_options_failed_due_to_server_error() {
+fn TEST_HACK_http_options_failed_due_to_server_error() {
     let mut server = Server::new();
 
     let _mock = server.mock("OPTIONS", "/").with_status(400).create();
@@ -45,7 +45,7 @@ fn http_options_failed_due_to_server_error() {
 }
 
 #[test]
-fn http_options_timeout() {
+fn TEST_HACK_http_options_timeout() {
     let mut server = Server::new();
     let _mock = server
         .mock("OPTIONS", "/")

@@ -4,7 +4,7 @@ use mockito::Server;
 use nu_test_support::{nu, pipeline};
 
 #[test]
-fn http_get_is_success() {
+fn TEST_HACK_http_get_is_success() {
     let mut server = Server::new();
 
     let _mock = server.mock("GET", "/").with_body("foo").create();
@@ -23,7 +23,7 @@ fn http_get_is_success() {
 }
 
 #[test]
-fn http_get_failed_due_to_server_error() {
+fn TEST_HACK_http_get_failed_due_to_server_error() {
     let mut server = Server::new();
 
     let _mock = server.mock("GET", "/").with_status(400).create();
@@ -42,7 +42,7 @@ fn http_get_failed_due_to_server_error() {
 }
 
 #[test]
-fn http_get_with_accept_errors() {
+fn TEST_HACK_http_get_with_accept_errors() {
     let mut server = Server::new();
 
     let _mock = server
@@ -65,7 +65,7 @@ fn http_get_with_accept_errors() {
 }
 
 #[test]
-fn http_get_with_accept_errors_and_full_raw_response() {
+fn TEST_HACK_http_get_with_accept_errors_and_full_raw_response() {
     let mut server = Server::new();
 
     let _mock = server
@@ -88,7 +88,7 @@ fn http_get_with_accept_errors_and_full_raw_response() {
 }
 
 #[test]
-fn http_get_with_accept_errors_and_full_json_response() {
+fn TEST_HACK_http_get_with_accept_errors_and_full_json_response() {
     let mut server = Server::new();
 
     let _mock = server
@@ -116,7 +116,7 @@ fn http_get_with_accept_errors_and_full_json_response() {
 }
 
 #[test]
-fn http_get_with_custom_headers_as_records() {
+fn TEST_HACK_http_get_with_custom_headers_as_records() {
     let mut server = Server::new();
 
     let mock1 = server
@@ -146,7 +146,7 @@ fn http_get_with_custom_headers_as_records() {
 }
 
 #[test]
-fn http_get_full_response() {
+fn TEST_HACK_http_get_full_response() {
     let mut server = Server::new();
 
     let _mock = server.mock("GET", "/").with_body("foo").create();
@@ -179,7 +179,7 @@ fn http_get_full_response() {
 }
 
 #[test]
-fn http_get_follows_redirect() {
+fn TEST_HACK_http_get_follows_redirect() {
     let mut server = Server::new();
 
     let _mock = server.mock("GET", "/bar").with_body("bar").create();
@@ -197,7 +197,7 @@ fn http_get_follows_redirect() {
 }
 
 #[test]
-fn http_get_redirect_mode_manual() {
+fn TEST_HACK_http_get_redirect_mode_manual() {
     let mut server = Server::new();
 
     let _mock = server
@@ -219,7 +219,7 @@ fn http_get_redirect_mode_manual() {
 }
 
 #[test]
-fn http_get_redirect_mode_error() {
+fn TEST_HACK_http_get_redirect_mode_error() {
     let mut server = Server::new();
 
     let _mock = server
@@ -250,34 +250,34 @@ fn http_get_redirect_mode_error() {
 
 #[test]
 #[ignore = "unreliable test"]
-fn http_get_expired_cert_fails() {
+fn TEST_HACK_http_get_expired_cert_fails() {
     let actual = nu!("http get https://expired.badssl.com/");
     assert!(actual.err.contains("network_failure"));
 }
 
 #[test]
 #[ignore = "unreliable test"]
-fn http_get_expired_cert_override() {
+fn TEST_HACK_http_get_expired_cert_override() {
     let actual = nu!("http get --insecure https://expired.badssl.com/");
     assert!(actual.out.contains("<html>"));
 }
 
 #[test]
 #[ignore = "unreliable test"]
-fn http_get_self_signed_fails() {
+fn TEST_HACK_http_get_self_signed_fails() {
     let actual = nu!("http get https://self-signed.badssl.com/");
     assert!(actual.err.contains("network_failure"));
 }
 
 #[test]
 #[ignore = "unreliable test"]
-fn http_get_self_signed_override() {
+fn TEST_HACK_http_get_self_signed_override() {
     let actual = nu!("http get --insecure https://self-signed.badssl.com/");
     assert!(actual.out.contains("<html>"));
 }
 
 #[test]
-fn http_get_with_invalid_mime_type() {
+fn TEST_HACK_http_get_with_invalid_mime_type() {
     let mut server = Server::new();
 
     let _mock = server
@@ -301,7 +301,7 @@ fn http_get_with_invalid_mime_type() {
 }
 
 #[test]
-fn http_get_with_unknown_mime_type() {
+fn TEST_HACK_http_get_with_unknown_mime_type() {
     let mut server = Server::new();
     let _mock = server
         .mock("GET", "/foo")
@@ -320,7 +320,7 @@ fn http_get_with_unknown_mime_type() {
 }
 
 #[test]
-fn http_get_timeout() {
+fn TEST_HACK_http_get_timeout() {
     let mut server = Server::new();
     let _mock = server
         .mock("GET", "/")

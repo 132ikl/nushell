@@ -2,7 +2,7 @@ use nu_test_support::{nu, playground::Playground};
 
 #[cfg(windows)]
 #[test]
-fn watch_test_pwd_per_drive() {
+fn TEST_HACK_watch_test_pwd_per_drive() {
     Playground::setup("watch_test_pwd_per_drive", |dirs, sandbox| {
         sandbox.mkdir("test_folder");
         let _actual = nu!(
@@ -65,7 +65,7 @@ fn watch_test_pwd_per_drive() {
 
 #[cfg(unix)]
 #[test]
-fn watch_test_pwd_per_drive() {
+fn TEST_HACK_watch_test_pwd_per_drive() {
     Playground::setup("watch_test_pwd_per_drive", |dirs, sandbox| {
         sandbox.mkdir("test_folder");
         let _actual = nu!(

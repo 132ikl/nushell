@@ -4,7 +4,7 @@ use mockito::Server;
 use nu_test_support::{nu, pipeline};
 
 #[test]
-fn http_put_is_success() {
+fn TEST_HACK_http_put_is_success() {
     let mut server = Server::new();
 
     let _mock = server.mock("PUT", "/").match_body("foo").create();
@@ -23,7 +23,7 @@ fn http_put_is_success() {
 }
 
 #[test]
-fn http_put_is_success_pipeline() {
+fn TEST_HACK_http_put_is_success_pipeline() {
     let mut server = Server::new();
 
     let _mock = server.mock("PUT", "/").match_body("foo").create();
@@ -42,7 +42,7 @@ fn http_put_is_success_pipeline() {
 }
 
 #[test]
-fn http_put_failed_due_to_server_error() {
+fn TEST_HACK_http_put_failed_due_to_server_error() {
     let mut server = Server::new();
 
     let _mock = server.mock("PUT", "/").with_status(400).create();
@@ -61,7 +61,7 @@ fn http_put_failed_due_to_server_error() {
 }
 
 #[test]
-fn http_put_failed_due_to_missing_body() {
+fn TEST_HACK_http_put_failed_due_to_missing_body() {
     let mut server = Server::new();
 
     let _mock = server.mock("PUT", "/").create();
@@ -82,7 +82,7 @@ fn http_put_failed_due_to_missing_body() {
 }
 
 #[test]
-fn http_put_failed_due_to_unexpected_body() {
+fn TEST_HACK_http_put_failed_due_to_unexpected_body() {
     let mut server = Server::new();
 
     let _mock = server.mock("PUT", "/").match_body("foo").create();
@@ -101,7 +101,7 @@ fn http_put_failed_due_to_unexpected_body() {
 }
 
 #[test]
-fn http_put_follows_redirect() {
+fn TEST_HACK_http_put_follows_redirect() {
     let mut server = Server::new();
 
     let _mock = server.mock("GET", "/bar").with_body("bar").create();
@@ -119,7 +119,7 @@ fn http_put_follows_redirect() {
 }
 
 #[test]
-fn http_put_redirect_mode_manual() {
+fn TEST_HACK_http_put_redirect_mode_manual() {
     let mut server = Server::new();
 
     let _mock = server
@@ -141,7 +141,7 @@ fn http_put_redirect_mode_manual() {
 }
 
 #[test]
-fn http_put_redirect_mode_error() {
+fn TEST_HACK_http_put_redirect_mode_error() {
     let mut server = Server::new();
 
     let _mock = server
@@ -166,7 +166,7 @@ fn http_put_redirect_mode_error() {
 }
 
 #[test]
-fn http_put_timeout() {
+fn TEST_HACK_http_put_timeout() {
     let mut server = Server::new();
     let _mock = server
         .mock("PUT", "/")
