@@ -119,7 +119,13 @@ pub(super) fn start_editor(
     })?;
 
     // Wrap the output into a `PipelineData::ByteStream`.
-    let child = nu_protocol::process::ChildProcess::new(child, None, false, call.head)?;
+    let child = nu_protocol::process::ChildProcess::new(
+        child,
+        None,
+        false,
+        engine_state.signals().clone(),
+        call.head,
+    )?;
     Ok(PipelineData::ByteStream(
         ByteStream::child(child, call.head),
         None,

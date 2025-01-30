@@ -1,4 +1,4 @@
-use crate::{byte_stream::convert_file, shell_error::io::IoError, ShellError, Span};
+use crate::{byte_stream::convert_file, shell_error::io::IoError, ShellError, Signals, Span};
 use nu_system::{ExitStatus, ForegroundChild};
 use os_pipe::PipeReader;
 use std::{
@@ -8,7 +8,12 @@ use std::{
     thread,
 };
 
-fn check_ok(status: ExitStatus, ignore_error: bool, span: Span) -> Result<(), ShellError> {
+fn check_ok(
+    status: ExitStatus,
+    signals: Signals,
+    ignore_error: bool,
+    span: Span,
+) -> Result<(), ShellError> {
     match status {
         ExitStatus::Exited(exit_code) => {
             if ignore_error {
@@ -27,6 +32,14 @@ fn check_ok(status: ExitStatus, ignore_error: bool, span: Span) -> Result<(), Sh
             use nix::sys::signal::Signal;
 
             let sig = Signal::try_from(signal);
+
+            if sig == Ok(Signal::SIGINT) {
+                println!("WCE");
+                signals.check(span)?;
+                return Ok(());
+            } else {
+                signals.reset();
+            }
 
             if sig == Ok(Signal::SIGPIPE) || (ignore_error && !core_dumped) {
                 // Processes often exit with SIGPIPE, but this is not an error condition.
@@ -58,7 +71,7 @@ enum ExitStatusFuture {
 }
 
 impl ExitStatusFuture {
-    fn wait(&mut self, span: Span) -> Result<ExitStatus, ShellError> {
+    fn wait(&mut self, signals: &Signals, span: Span) -> Result<ExitStatus, ShellError> {
         match self {
             ExitStatusFuture::Finished(Ok(status)) => Ok(*status),
             ExitStatusFuture::Finished(Err(err)) => Err(err.as_ref().clone()),
@@ -70,7 +83,7 @@ impl ExitStatusFuture {
                             core_dumped: true, ..
                         },
                     )) => {
-                        check_ok(status, false, span)?;
+                        check_ok(status, signals.clone(), false, span)?;
                         Ok(status)
                     }
                     Ok(Ok(status)) => Ok(status),
@@ -161,6 +174,7 @@ pub struct ChildProcess {
     pub stdout: Option<ChildPipe>,
     pub stderr: Option<ChildPipe>,
     exit_status: ExitStatusFuture,
+    signals: Signals,
     ignore_error: bool,
     span: Span,
 }
@@ -170,6 +184,7 @@ impl ChildProcess {
         mut child: ForegroundChild,
         reader: Option<PipeReader>,
         swap: bool,
+        signals: Signals,
         span: Span,
     ) -> Result<Self, ShellError> {
         let (stdout, stderr) = if let Some(combined) = reader {
@@ -200,13 +215,20 @@ impl ChildProcess {
                 )
             })?;
 
-        Ok(Self::from_raw(stdout, stderr, Some(exit_status), span))
+        Ok(Self::from_raw(
+            stdout,
+            stderr,
+            Some(exit_status),
+            signals,
+            span,
+        ))
     }
 
     pub fn from_raw(
         stdout: Option<PipeReader>,
         stderr: Option<PipeReader>,
         exit_status: Option<Receiver<io::Result<ExitStatus>>>,
+        signals: Signals,
         span: Span,
     ) -> Self {
         Self {
@@ -215,6 +237,7 @@ impl ChildProcess {
             exit_status: exit_status
                 .map(ExitStatusFuture::Running)
                 .unwrap_or(ExitStatusFuture::Finished(Ok(ExitStatus::Exited(0)))),
+            signals,
             ignore_error: false,
             span,
         }
@@ -248,7 +271,8 @@ impl ChildProcess {
         };
 
         check_ok(
-            self.exit_status.wait(self.span)?,
+            self.exit_status.wait(&self.signals, self.span)?,
+            self.signals,
             self.ignore_error,
             self.span,
         )?;
@@ -294,7 +318,8 @@ impl ChildProcess {
         }
 
         check_ok(
-            self.exit_status.wait(self.span)?,
+            self.exit_status.wait(&self.signals, self.span)?,
+            self.signals,
             self.ignore_error,
             self.span,
         )
@@ -343,7 +368,7 @@ impl ChildProcess {
             (None, stderr)
         };
 
-        let exit_status = self.exit_status.wait(self.span)?;
+        let exit_status = self.exit_status.wait(&self.signals, self.span)?;
 
         Ok(ProcessOutput {
             stdout,

@@ -285,6 +285,7 @@ impl Command for External {
             child,
             merged_stream,
             matches!(stderr, OutDest::Pipe),
+            engine_state.signals().clone(),
             call.head,
         )?;
 

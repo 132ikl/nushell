@@ -190,7 +190,13 @@ impl Command for Do {
                         child.ignore_error(false);
                         child.wait()?;
 
-                        let mut child = ChildProcess::from_raw(None, None, None, span);
+                        let mut child = ChildProcess::from_raw(
+                            None,
+                            None,
+                            None,
+                            engine_state.signals().clone(),
+                            span,
+                        );
                         if let Some(stdout) = stdout {
                             child.stdout = Some(ChildPipe::Tee(Box::new(Cursor::new(stdout))));
                         }

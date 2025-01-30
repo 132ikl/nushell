@@ -357,6 +357,7 @@ mod foreground_pgroup {
             Pid::from_raw(existing_pgrp as i32)
         };
         let _ = unistd::setpgid(pid, pgrp);
+        let _ = unistd::setpgid(unistd::getpid(), pgrp);
         let _ = unistd::tcsetpgrp(unsafe { stdin_fd() }, pgrp);
     }
 
@@ -365,5 +366,6 @@ mod foreground_pgroup {
         if let Err(e) = unistd::tcsetpgrp(unsafe { stdin_fd() }, unistd::getpgrp()) {
             eprintln!("ERROR: reset foreground id failed, tcsetpgrp result: {e:?}");
         }
+        let _ = unistd::setpgid(unistd::getpid(), unistd::getpid());
     }
 }
