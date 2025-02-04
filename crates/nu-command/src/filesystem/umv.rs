@@ -2,8 +2,9 @@
 use nu_engine::{command_prelude::*, current_dir};
 use nu_path::expand_path_with;
 use nu_protocol::{shell_error::io::IoError, NuGlob};
-use std::{ffi::OsString, path::PathBuf};
+use std::{any::Any, ffi::OsString, ops::Deref, path::PathBuf};
 use uu_mv::{BackupMode, UpdateMode};
+use uucore::error::UIoError;
 
 #[derive(Clone)]
 pub struct UMv;
@@ -191,6 +192,11 @@ impl Command for UMv {
             debug: false,
         };
         if let Err(error) = uu_mv::mv(&files, &options) {
+            if let Some(source) = error.source() {
+                if let Some(ioerror) = source.downcast_ref::<std::io::Error>() {
+                    return Err(IoError::new(ioerror.kind(), call.span(), None).into());
+                }
+            }
             return Err(ShellError::GenericError {
                 error: format!("{}", error),
                 msg: format!("{}", error),

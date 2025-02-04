@@ -106,6 +106,7 @@ v_htmlescape = { workspace = true }
 wax = { workspace = true }
 which = { workspace = true, optional = true }
 unicode-width = { workspace = true }
+uucore = { path = "/home/rose/src/coreutils/src/uucore", features = ["mode"] }
 data-encoding = { version = "2.7.0", features = ["alloc"] }
 web-time = { workspace = true }
 
