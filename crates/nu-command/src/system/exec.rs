@@ -12,7 +12,11 @@ impl Command for Exec {
 
     fn signature(&self) -> Signature {
         Signature::build("exec")
-            .input_output_types(vec![(Type::Nothing, Type::Any)])
+            .input_output_types(vec![
+                (Type::String, Type::Any),
+                (Type::Binary, Type::Any),
+                (Type::Nothing, Type::Any),
+            ])
             .rest(
                 "command",
                 SyntaxShape::OneOf(vec![SyntaxShape::GlobPattern, SyntaxShape::Any]),

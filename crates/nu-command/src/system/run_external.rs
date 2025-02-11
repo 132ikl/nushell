@@ -37,7 +37,11 @@ impl Command for External {
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Any, Type::Any)])
+            .input_output_types(vec![
+                (Type::String, Type::Any),
+                (Type::Binary, Type::Any),
+                (Type::Nothing, Type::Any),
+            ])
             .rest(
                 "command",
                 SyntaxShape::OneOf(vec![SyntaxShape::GlobPattern, SyntaxShape::Any]),
