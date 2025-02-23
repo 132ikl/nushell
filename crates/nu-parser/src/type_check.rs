@@ -1,7 +1,7 @@
 use nu_protocol::{
     ast::{Block, Comparison, Expr, Expression, Math, Operator, Pipeline, Range},
     engine::StateWorkingSet,
-    ParseError, Span, Type,
+    input_type_to_string, ParseError, Span, Type,
 };
 
 fn type_error(
@@ -38,6 +38,15 @@ fn type_error(
         },
     };
     (Type::Any, Some(err))
+}
+
+fn input_type_compatible(call_type: &Option<Type>, input_type: &Option<Type>) -> bool {
+    match (call_type, input_type) {
+        (Some(lhs), Some(rhs)) => type_compatible(lhs, rhs),
+        (Some(Type::Any), None) => true,
+        (None, None) => true,
+        _ => false,
+    }
 }
 
 pub fn type_compatible(lhs: &Type, rhs: &Type) -> bool {
@@ -746,19 +755,20 @@ pub fn math_result_type(
 pub fn check_pipeline_type(
     working_set: &StateWorkingSet,
     pipeline: &Pipeline,
-    input_type: Type,
+    input_type: Option<Type>,
 ) -> (Type, Option<Vec<ParseError>>) {
     let mut current_type = input_type;
 
     let mut output_errors: Option<Vec<ParseError>> = None;
 
     'elem: for elem in &pipeline.elements {
+        // TODO(rose): why is this here?
         if elem.redirection.is_some() {
-            current_type = Type::Any;
+            current_type = Some(Type::Any);
         } else if let Expr::Call(call) = &elem.expr.expr {
             let decl = working_set.get_decl(call.decl_id);
 
-            if current_type == Type::Any {
+            if current_type == Some(Type::Any) {
                 let mut new_current_type = None;
                 for (_, call_output) in decl.signature().input_output_types {
                     if let Some(inner_current_type) = &new_current_type {
@@ -774,15 +784,15 @@ pub fn check_pipeline_type(
                 }
 
                 if let Some(new_current_type) = new_current_type {
-                    current_type = new_current_type
+                    current_type = Some(new_current_type)
                 } else {
-                    current_type = Type::Any;
+                    current_type = Some(Type::Any);
                 }
                 continue 'elem;
             } else {
                 for (call_input, call_output) in decl.signature().input_output_types {
-                    if type_compatible(&call_input, &current_type) {
-                        current_type = call_output.clone();
+                    if input_type_compatible(&call_input, &current_type) {
+                        current_type = Some(call_output.clone());
                         continue 'elem;
                     }
                 }
@@ -790,18 +800,25 @@ pub fn check_pipeline_type(
 
             if !decl.signature().input_output_types.is_empty() {
                 if let Some(output_errors) = &mut output_errors {
-                    output_errors.push(ParseError::InputMismatch(current_type, call.head))
+                    output_errors.push(ParseError::InputMismatch(
+                        input_type_to_string(&current_type),
+                        call.head,
+                    ))
                 } else {
-                    output_errors = Some(vec![ParseError::InputMismatch(current_type, call.head)]);
+                    output_errors = Some(vec![ParseError::InputMismatch(
+                        input_type_to_string(&current_type),
+                        call.head,
+                    )]);
                 }
             }
-            current_type = Type::Any;
+            current_type = Some(Type::Any);
         } else {
-            current_type = elem.expr.ty.clone();
+            current_type = Some(elem.expr.ty.clone());
         }
     }
 
-    (current_type, output_errors)
+    // TODO(rose)
+    (current_type.unwrap(), output_errors)
 }
 
 pub fn check_block_input_output(working_set: &StateWorkingSet, block: &Block) -> Vec<ParseError> {
@@ -816,7 +833,7 @@ pub fn check_block_input_output(working_set: &StateWorkingSet, block: &Block) ->
             let (checked_output_type, err) =
                 check_pipeline_type(working_set, pipeline, current_type);
             current_output_type = checked_output_type;
-            current_type = Type::Nothing;
+            current_type = None;
             if let Some(err) = err {
                 output_errors.extend_from_slice(&err);
             }
@@ -853,11 +870,11 @@ pub fn check_block_input_output(working_set: &StateWorkingSet, block: &Block) ->
     }
 
     if block.signature.input_output_types.is_empty() {
-        let mut current_type = Type::Any;
+        let mut current_type = Some(Type::Any);
 
         for pipeline in &block.pipelines {
             let (_, err) = check_pipeline_type(working_set, pipeline, current_type);
-            current_type = Type::Nothing;
+            current_type = None;
 
             if let Some(err) = err {
                 output_errors.extend_from_slice(&err);

@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use nu_engine::{command_prelude::*, compile};
 use nu_protocol::{
-    ast::Block, debugger::WithoutDebug, engine::StateWorkingSet, report_shell_error, Range,
+    ast::Block, debugger::WithoutDebug, engine::StateWorkingSet, input_type_to_string,
+    report_shell_error, Range,
 };
 use std::{
     sync::Arc,
@@ -176,7 +177,7 @@ pub fn check_example_evaluates_to_expected_output(
 
 pub fn check_all_signature_input_output_types_entries_have_examples(
     signature: Signature,
-    witnessed_type_transformations: HashSet<(Type, Type)>,
+    witnessed_type_transformations: HashSet<(Option<Type>, Type)>,
 ) {
     let declared_type_transformations = HashSet::from_iter(signature.input_output_types);
     assert!(
@@ -194,7 +195,7 @@ pub fn check_all_signature_input_output_types_entries_have_examples(
             {:?}",
             declared_type_transformations
                 .difference(&witnessed_type_transformations)
-                .map(|(s1, s2)| format!("{s1} -> {s2}"))
+                .map(|(s1, s2)| format!("{} -> {s2}", input_type_to_string(s1)))
                 .join(", ")
         );
     }

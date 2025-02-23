@@ -39,7 +39,7 @@ impl Command for Rm {
 
     fn signature(&self) -> Signature {
         Signature::build("rm")
-            .input_output_types(vec![(Type::Nothing, Type::Nothing)])
+            .empty_output_type(Type::Nothing)
             .rest("paths", SyntaxShape::OneOf(vec![SyntaxShape::GlobPattern, SyntaxShape::String]), "The file paths(s) to remove.")
             .switch(
                 "trash",

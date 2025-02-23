@@ -1,5 +1,5 @@
 use nu_engine::command_prelude::*;
-use nu_protocol::{Config, DataSource, PipelineMetadata};
+use nu_protocol::{input_type_to_string, Config, DataSource, PipelineMetadata};
 
 use std::fmt::Write;
 
@@ -146,7 +146,8 @@ impl Command for ViewSource {
                                 let mut c = 0;
                                 for (insig, outsig) in type_signatures {
                                     c += 1;
-                                    let s = format!("{} -> {}", insig, outsig);
+                                    let s =
+                                        format!("{} -> {}", input_type_to_string(insig), outsig);
                                     final_contents.push_str(&s);
                                     if c != len {
                                         final_contents.push_str(", ")

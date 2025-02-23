@@ -11,6 +11,17 @@ pub enum ShapeDescriptorUse {
     Type,
 }
 
+pub fn parse_input_type(
+    working_set: &mut StateWorkingSet,
+    bytes: &[u8],
+    span: Span,
+) -> Option<Type> {
+    match bytes {
+        b"empty" => None,
+        _ => Some(parse_shape_name(working_set, bytes, span, ShapeDescriptorUse::Type).to_type()),
+    }
+}
+
 /// equivalent to [`parse_shape_name`] with [`ShapeDescriptorUse::Type`] converting the
 /// [`SyntaxShape`] to its [`Type`]
 pub fn parse_type(working_set: &mut StateWorkingSet, bytes: &[u8], span: Span) -> Type {

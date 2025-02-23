@@ -1,6 +1,7 @@
 use crate::help::highlight_search_in_table;
 use nu_color_config::StyleComputer;
 use nu_engine::{command_prelude::*, get_full_help};
+use nu_protocol::input_type_to_string;
 
 #[derive(Clone)]
 pub struct HelpCommands;
@@ -191,7 +192,7 @@ fn build_help_commands(engine_state: &EngineState, span: Span) -> Vec<Value> {
             for (input_type, output_type) in sig.input_output_types {
                 vals.push(Value::record(
                     record! {
-                        "input" => Value::string(input_type.to_string(), span),
+                        "input" => Value::string(input_type_to_string(&input_type), span),
                         "output" => Value::string(output_type.to_string(), span),
                     },
                     span,

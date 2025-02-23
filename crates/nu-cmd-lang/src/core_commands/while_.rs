@@ -15,7 +15,7 @@ impl Command for While {
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build("while")
-            .input_output_types(vec![(Type::Nothing, Type::Nothing)])
+            .empty_output_type(Type::Nothing)
             .allow_variants_without_examples(true)
             .required("cond", SyntaxShape::MathExpression, "Condition to check.")
             .required(

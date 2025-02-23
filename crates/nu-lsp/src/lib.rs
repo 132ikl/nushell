@@ -15,7 +15,7 @@ use nu_cli::{NuCompleter, SuggestionKind};
 use nu_protocol::{
     ast::{Block, PathMember},
     engine::{CachedFile, Command, EngineState, Stack, StateDelta, StateWorkingSet},
-    DeclId, ModuleId, Span, Type, VarId,
+    input_type_to_string, DeclId, ModuleId, Span, Type, VarId,
 };
 use std::{
     collections::BTreeMap,
@@ -543,7 +543,11 @@ impl LanguageServer {
             description.push_str("\n### Input/output types\n");
             description.push_str("\n```nu\n");
             for input_output in &signature.input_output_types {
-                description.push_str(&format!(" {} | {}\n", input_output.0, input_output.1));
+                description.push_str(&format!(
+                    " {} | {}\n",
+                    input_type_to_string(&input_output.0),
+                    input_output.1
+                ));
             }
             description.push_str("\n```\n");
         }

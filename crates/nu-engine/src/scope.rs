@@ -1,7 +1,8 @@
 use nu_protocol::{
     ast::Expr,
     engine::{Command, EngineState, Stack, Visibility},
-    record, DeclId, ModuleId, Signature, Span, SyntaxShape, Type, Value, VarId,
+    input_type_to_string, record, DeclId, ModuleId, Signature, Span, SyntaxShape, Type, Value,
+    VarId,
 };
 use std::{cmp::Ordering, collections::HashMap};
 
@@ -151,7 +152,7 @@ impl<'e, 's> ScopeData<'e, 's> {
             .iter()
             .map(|(input_type, output_type)| {
                 (
-                    input_type.to_shape().to_string(),
+                    input_type_to_string(input_type),
                     Value::list(
                         self.collect_signature_entries(input_type, output_type, signature, span),
                         span,
@@ -165,11 +166,16 @@ impl<'e, 's> ScopeData<'e, 's> {
         // a little bit better. If sigs is empty, we're pretty sure that we're dealing
         // with a custom command.
         if sigs.is_empty() {
-            let any_type = &Type::Any;
+            let any_type = Type::Any;
             sigs.push((
                 any_type.to_shape().to_string(),
                 Value::list(
-                    self.collect_signature_entries(any_type, any_type, signature, span),
+                    self.collect_signature_entries(
+                        &Some(any_type.clone()),
+                        &any_type,
+                        signature,
+                        span,
+                    ),
                     span,
                 ),
             ));
@@ -189,7 +195,7 @@ impl<'e, 's> ScopeData<'e, 's> {
 
     fn collect_signature_entries(
         &self,
-        input_type: &Type,
+        input_type: &Option<Type>,
         output_type: &Type,
         signature: &Signature,
         span: Span,
@@ -201,7 +207,7 @@ impl<'e, 's> ScopeData<'e, 's> {
             record! {
                 "parameter_name" => Value::nothing(span),
                 "parameter_type" => Value::string("input", span),
-                "syntax_shape" => Value::string(input_type.to_shape().to_string(), span),
+                "syntax_shape" => Value::string(input_type_to_string(input_type), span),
                 "is_optional" => Value::bool(false, span),
                 "short_flag" => Value::nothing(span),
                 "description" => Value::nothing(span),

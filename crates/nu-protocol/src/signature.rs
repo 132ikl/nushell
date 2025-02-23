@@ -161,7 +161,7 @@ pub struct Signature {
     pub optional_positional: Vec<PositionalArg>,
     pub rest_positional: Option<PositionalArg>,
     pub named: Vec<Flag>,
-    pub input_output_types: Vec<(Type, Type)>,
+    pub input_output_types: Vec<(Option<Type>, Type)>,
     pub allow_variants_without_examples: bool,
     pub is_filter: bool,
     pub creates_scope: bool,
@@ -204,9 +204,9 @@ impl Signature {
     }
 
     // Gets the input type from the signature
-    pub fn get_input_type(&self) -> Type {
+    pub fn get_input_type(&self) -> Option<Type> {
         match self.input_output_types.len() {
-            0 => Type::Any,
+            0 => Some(Type::Any),
             1 => self.input_output_types[0].0.clone(),
             _ => {
                 let first = &self.input_output_types[0].0;
@@ -217,7 +217,7 @@ impl Signature {
                 {
                     first.clone()
                 } else {
-                    Type::Any
+                    Some(Type::Any)
                 }
             }
         }
@@ -444,13 +444,24 @@ impl Signature {
 
     /// Changes the input type of the command signature
     pub fn input_output_type(mut self, input_type: Type, output_type: Type) -> Signature {
-        self.input_output_types.push((input_type, output_type));
+        // TODO(rose)
+        self.input_output_types
+            .push((Some(input_type), output_type));
         self
     }
 
     /// Set the input-output type signature variants of the command
     pub fn input_output_types(mut self, input_output_types: Vec<(Type, Type)>) -> Signature {
-        self.input_output_types = input_output_types;
+        // TODO(rose)
+        self.input_output_types = input_output_types
+            .into_iter()
+            .map(|(i, o)| (Some(i), o))
+            .collect();
+        self
+    }
+
+    pub fn empty_output_type(mut self, output_type: Type) -> Signature {
+        self.input_output_types.push((None, output_type));
         self
     }
 
@@ -646,6 +657,14 @@ impl Signature {
             );
             s
         }
+    }
+}
+
+pub fn input_type_to_string(input_type: &Option<Type>) -> String {
+    if let Some(ty) = input_type {
+        ty.to_shape().to_string()
+    } else {
+        "empty".to_string()
     }
 }
 

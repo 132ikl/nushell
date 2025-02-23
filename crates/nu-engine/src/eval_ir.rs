@@ -1287,11 +1287,6 @@ fn check_input_types(
         return Ok(());
     }
 
-    // If a command only has a nothing input type, then allow any input data
-    if io_types.iter().all(|(intype, _)| intype == &Type::Nothing) {
-        return Ok(());
-    }
-
     match input {
         // early return error directly if detected
         PipelineData::Value(Value::Error { error, .. }, ..) => return Err(*error.clone()),
@@ -1300,17 +1295,25 @@ fn check_input_types(
         _ => (),
     }
 
-    // Check if the input type is compatible with *any* of the command's possible input types
-    if io_types
-        .iter()
-        .any(|(command_type, _)| input.is_subtype_of(command_type))
-    {
-        return Ok(());
+    for in_type in io_types.iter().map(|(in_type, _)| in_type) {
+        match in_type {
+            // Empty pipeline input type found, so allow regardless of input data type
+            None => return Ok(()),
+            // Check if input is compatible with this command input types
+            Some(ty) if input.is_subtype_of(&ty) => return Ok(()),
+            _ => (),
+        }
     }
 
+    // Cold path: create an error
     let mut input_types = io_types
         .iter()
-        .map(|(input, _)| input.to_string())
+        .map(|(input, _)| {
+            input
+                .as_ref()
+                .map(ToString::to_string)
+                .unwrap_or("empty".to_string())
+        })
         .collect::<Vec<String>>();
 
     let expected_string = match input_types.len() {

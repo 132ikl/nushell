@@ -5,7 +5,7 @@ use crate::{
     lite_parser::{lite_parse, LiteCommand, LitePipeline, LiteRedirection, LiteRedirectionTarget},
     parse_keywords::*,
     parse_patterns::parse_pattern,
-    parse_shape_specs::{parse_shape_name, parse_type, ShapeDescriptorUse},
+    parse_shape_specs::{parse_input_type, parse_shape_name, parse_type, ShapeDescriptorUse},
     type_check::{self, check_range_types, math_result_type, type_compatible},
     Token, TokenContents,
 };
@@ -3444,7 +3444,7 @@ pub fn expand_to_cell_path(
 pub fn parse_input_output_types(
     working_set: &mut StateWorkingSet,
     spans: &[Span],
-) -> Vec<(Type, Type)> {
+) -> Vec<(Option<Type>, Type)> {
     let mut full_span = Span::concat(spans);
 
     let mut bytes = working_set.get_span_contents(full_span);
@@ -3471,7 +3471,7 @@ pub fn parse_input_output_types(
     let mut idx = 0;
     while idx < tokens.len() {
         let type_bytes = working_set.get_span_contents(tokens[idx].span).to_vec();
-        let input_type = parse_type(working_set, &type_bytes, tokens[idx].span);
+        let input_type = parse_input_type(working_set, &type_bytes, tokens[idx].span);
 
         idx += 1;
         if idx >= tokens.len() {

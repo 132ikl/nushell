@@ -15,7 +15,7 @@ impl Command for PluginUse {
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Nothing, Type::Nothing)])
+            .empty_output_type(Type::Nothing)
             .named(
                 "plugin-config",
                 SyntaxShape::Filepath,

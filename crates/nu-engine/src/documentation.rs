@@ -2,10 +2,9 @@ use crate::eval_call;
 use nu_protocol::{
     ast::{Argument, Call, Expr, Expression, RecordItem},
     debugger::WithoutDebug,
-    engine::CommandType,
-    engine::{Command, EngineState, Stack, UNKNOWN_SPAN_ID},
-    record, Category, Config, Example, IntoPipelineData, PipelineData, PositionalArg, Signature,
-    Span, SpanId, Spanned, SyntaxShape, Type, Value,
+    engine::{Command, CommandType, EngineState, Stack, UNKNOWN_SPAN_ID},
+    input_type_to_string, record, Category, Config, Example, IntoPipelineData, PipelineData,
+    PositionalArg, Signature, Span, SpanId, Spanned, SyntaxShape, Type, Value,
 };
 use nu_utils::terminal_size;
 use std::{collections::HashMap, fmt::Write};
@@ -209,7 +208,7 @@ fn get_documentation(
             for (input, output) in &sig.input_output_types {
                 vals.push(Value::record(
                     record! {
-                        "input" => Value::string(input.to_string(), span),
+                        "input" => Value::string(input_type_to_string(input), span),
                         "output" => Value::string(output.to_string(), span),
                     },
                     span,

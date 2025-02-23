@@ -3,7 +3,7 @@ use nu_cli::NuCompleter;
 use nu_parser::{flatten_block, parse, FlatShape};
 use nu_protocol::{
     engine::{EngineState, Stack, StateWorkingSet},
-    report_shell_error,
+    input_type_to_string, report_shell_error,
     shell_error::io::{ErrorKindExt, IoError, NotFound},
     DeclId, ShellError, Span, Value, VarId,
 };
@@ -330,7 +330,11 @@ pub fn hover(engine_state: &mut EngineState, file_path: &str, location: &Value) 
 
                 description.push_str("\n```\n");
                 for input_output in &signature.input_output_types {
-                    description.push_str(&format!("  {} | {}\n", input_output.0, input_output.1));
+                    description.push_str(&format!(
+                        "  {} | {}\n",
+                        input_type_to_string(&input_output.0),
+                        input_output.1
+                    ));
                 }
                 description.push_str("\n```\n");
             }
