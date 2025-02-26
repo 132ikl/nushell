@@ -26,6 +26,7 @@ pub fn create_default_context() -> EngineState {
             Def,
             Describe,
             Do,
+            DoConstructor,
             Echo,
             ErrorMake,
             ExportAlias,

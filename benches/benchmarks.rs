@@ -3,7 +3,8 @@ use nu_plugin_core::{Encoder, EncodingType};
 use nu_plugin_protocol::{PluginCallResponse, PluginOutput};
 use nu_protocol::{
     engine::{EngineState, Stack},
-    PipelineData, Signals, Span, Spanned, Value,
+    Category, Flag, PipelineData, PositionalArg, Signals, Signature, Span, Spanned, SyntaxShape,
+    Type, Value,
 };
 use nu_std::load_standard_library;
 use nu_utils::{get_default_config, get_default_env};
@@ -435,6 +436,132 @@ fn decode_msgpack(row_cnt: usize, col_cnt: usize) -> impl IntoBenchmarks {
     )]
 }
 
+fn signature_builder() -> impl IntoBenchmarks {
+    [benchmark_fn("signature_by_builder", |b| {
+        b.iter(|| {
+            black_box(
+                Signature::build("do")
+                    .required("closure", SyntaxShape::Closure(None), "The closure to run.")
+                    .input_output_types(vec![(Type::Any, Type::Any)])
+                    .switch(
+                        "ignore-errors",
+                        "ignore errors as the closure runs",
+                        Some('i'),
+                    )
+                    .switch(
+                        "ignore-shell-errors",
+                        "ignore shell errors as the closure runs",
+                        Some('s'),
+                    )
+                    .switch(
+                        "ignore-program-errors",
+                        "ignore external program errors as the closure runs",
+                        Some('p'),
+                    )
+                    .switch(
+                        "capture-errors",
+                        "catch errors as the closure runs, and return them",
+                        Some('c'),
+                    )
+                    .switch(
+                        "env",
+                        "keep the environment defined inside the command",
+                        None,
+                    )
+                    .rest(
+                        "rest",
+                        SyntaxShape::Any,
+                        "The parameter(s) for the closure.",
+                    )
+                    .category(Category::Core),
+            )
+        })
+    })]
+}
+
+fn signature_constructor() -> impl IntoBenchmarks {
+    [benchmark_fn("signature_by_constructor", |b| {
+        b.iter(|| {
+            black_box(Signature {
+                name: "do".to_string(),
+                description: String::new(),
+                extra_description: String::new(),
+                search_terms: vec![],
+                required_positional: vec![
+                    (PositionalArg {
+                        name: "closure".to_string(),
+                        desc: "The closure to run.".to_string(),
+                        shape: SyntaxShape::Closure(None),
+                        var_id: None,
+                        default_value: None,
+                    }),
+                ],
+                optional_positional: Vec::new(),
+                rest_positional: Some(PositionalArg {
+                    name: "rest".to_string(),
+                    desc: "The parameter(s) for the closure.".to_string(),
+                    shape: SyntaxShape::Any,
+                    var_id: None,
+                    default_value: None,
+                }),
+                named: vec![
+                    Flag {
+                        long: "ignore-errors".to_string(),
+                        short: Some('i'),
+                        arg: None,
+                        required: false,
+                        desc: "ignore errors as the closure runs".to_string(),
+                        var_id: None,
+                        default_value: None,
+                    },
+                    Flag {
+                        long: "ignore-shell-errors".to_string(),
+                        short: Some('s'),
+                        arg: None,
+                        required: false,
+                        desc: "ignore shell errors as the closure runs".to_string(),
+                        var_id: None,
+                        default_value: None,
+                    },
+                    Flag {
+                        long: "ignore-program-errors".to_string(),
+                        short: Some('p'),
+                        arg: None,
+                        required: false,
+                        desc: "ignore external program errors as the closure runs".to_string(),
+                        var_id: None,
+                        default_value: None,
+                    },
+                    Flag {
+                        long: "capture-errors".to_string(),
+                        short: Some('c'),
+                        arg: None,
+                        required: false,
+                        desc: "catch errors as the closure runs".to_string(),
+                        var_id: None,
+                        default_value: None,
+                    },
+                    Flag {
+                        long: "env".to_string(),
+                        short: None,
+                        arg: None,
+                        required: false,
+                        desc: "keep the environment defined inside the command".to_string(),
+                        var_id: None,
+                        default_value: None,
+                    },
+                ],
+                input_output_types: vec![(Type::Any, Type::Any)],
+                allow_variants_without_examples: false,
+                is_filter: false,
+                creates_scope: false,
+                allows_unknown_args: false,
+                category: Category::Core,
+            })
+        })
+    })]
+}
+
 tango_benchmarks!(
     bench_load_standard_lib(),
     // Data types
@@ -535,7 +662,10 @@ tango_benchmarks!(
     decode_json(10000, 15),
     // MsgPack
     decode_msgpack(100, 5),
-    decode_msgpack(10000, 15)
+    decode_msgpack(10000, 15),
+    // signatures
+    signature_builder(),
+    signature_constructor()
 );
 
 tango_main!();

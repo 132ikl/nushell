@@ -2,7 +2,8 @@ use nu_engine::{command_prelude::*, get_eval_block_with_early_return, redirect_e
 #[cfg(feature = "os")]
 use nu_protocol::process::{ChildPipe, ChildProcess};
 use nu_protocol::{
-    engine::Closure, shell_error::io::IoError, ByteStream, ByteStreamSource, OutDest,
+    engine::Closure, shell_error::io::IoError, ByteStream, ByteStreamSource, Flag, OutDest,
+    PositionalArg,
 };
 
 use std::{
@@ -11,11 +12,11 @@ use std::{
 };
 
 #[derive(Clone)]
-pub struct Do;
+pub struct DoConstructor;
 
-impl Command for Do {
+impl Command for DoConstructor {
     fn name(&self) -> &str {
-        "do"
+        "do-constructor"
     }
 
     fn description(&self) -> &str {
@@ -23,40 +24,82 @@ impl Command for Do {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("do")
-            .required("closure", SyntaxShape::Closure(None), "The closure to run.")
-            .input_output_types(vec![(Type::Any, Type::Any)])
-            .switch(
-                "ignore-errors",
-                "ignore errors as the closure runs",
-                Some('i'),
-            )
-            .switch(
-                "ignore-shell-errors",
-                "ignore shell errors as the closure runs",
-                Some('s'),
-            )
-            .switch(
-                "ignore-program-errors",
-                "ignore external program errors as the closure runs",
-                Some('p'),
-            )
-            .switch(
-                "capture-errors",
-                "catch errors as the closure runs, and return them",
-                Some('c'),
-            )
-            .switch(
-                "env",
-                "keep the environment defined inside the command",
-                None,
-            )
-            .rest(
-                "rest",
-                SyntaxShape::Any,
-                "The parameter(s) for the closure.",
-            )
-            .category(Category::Core)
+        Signature {
+            name: "do-constructor".to_string(),
+            description: String::new(),
+            extra_description: String::new(),
+            search_terms: vec![],
+            required_positional: vec![
+                (PositionalArg {
+                    name: "closure".to_string(),
+                    desc: "The closure to run.".to_string(),
+                    shape: SyntaxShape::Closure(None),
+                    var_id: None,
+                    default_value: None,
+                }),
+            ],
+            optional_positional: Vec::new(),
+            rest_positional: Some(PositionalArg {
+                name: "rest".to_string(),
+                desc: "The parameter(s) for the closure.".to_string(),
+                shape: SyntaxShape::Any,
+                var_id: None,
+                default_value: None,
+            }),
+            named: vec![
+                Flag {
+                    long: "ignore-errors".to_string(),
+                    short: Some('i'),
+                    arg: None,
+                    required: false,
+                    desc: "ignore errors as the closure runs".to_string(),
+                    var_id: None,
+                    default_value: None,
+                },
+                Flag {
+                    long: "ignore-shell-errors".to_string(),
+                    short: Some('s'),
+                    arg: None,
+                    required: false,
+                    desc: "ignore shell errors as the closure runs".to_string(),
+                    var_id: None,
+                    default_value: None,
+                },
+                Flag {
+                    long: "ignore-program-errors".to_string(),
+                    short: Some('p'),
+                    arg: None,
+                    required: false,
+                    desc: "ignore external program errors as the closure runs".to_string(),
+                    var_id: None,
+                    default_value: None,
+                },
+                Flag {
+                    long: "capture-errors".to_string(),
+                    short: Some('c'),
+                    arg: None,
+                    required: false,
+                    desc: "catch errors as the closure runs".to_string(),
+                    var_id: None,
+                    default_value: None,
+                },
+                Flag {
+                    long: "env".to_string(),
+                    short: None,
+                    arg: None,
+                    required: false,
+                    desc: "keep the environment defined inside the command".to_string(),
+                    var_id: None,
+                    default_value: None,
+                },
+            ],
+            input_output_types: vec![(Type::Any, Type::Any)],
+            allow_variants_without_examples: false,
+            is_filter: false,
+            creates_scope: false,
+            allows_unknown_args: false,
+            category: Category::Core,
+        }
     }
 
     fn run(

@@ -1023,7 +1023,7 @@ fn eval_call<D: DebugContext>(
     let args_len = caller_stack.arguments.get_len(*args_base);
     let decl = engine_state.get_decl(decl_id);
 
-    check_input_types(&input, decl.signature(), head)?;
+    // check_input_types(&input, decl.signature(), head)?;
 
     // Set up redirect modes
     let mut caller_stack = caller_stack.push_redirection(redirect_out.take(), redirect_err.take());
