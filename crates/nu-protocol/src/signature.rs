@@ -382,11 +382,11 @@ impl Signature {
         desc: impl Into<String>,
         short: Option<char>,
     ) -> Signature {
-        let (name, s) = self.check_names(name, short);
+        // let (name, s) = self.check_names(name, short);
 
         self.named.push(Flag {
-            long: name,
-            short: s,
+            long: name.into(),
+            short,
             arg: Some(shape.into()),
             required: false,
             desc: desc.into(),
@@ -405,11 +405,11 @@ impl Signature {
         desc: impl Into<String>,
         short: Option<char>,
     ) -> Signature {
-        let (name, s) = self.check_names(name, short);
+        // let (name, s) = self.check_names(name, short);
 
         self.named.push(Flag {
-            long: name,
-            short: s,
+            long: name.into(),
+            short: short,
             arg: Some(shape.into()),
             required: true,
             desc: desc.into(),
@@ -427,11 +427,11 @@ impl Signature {
         desc: impl Into<String>,
         short: Option<char>,
     ) -> Signature {
-        let (name, s) = self.check_names(name, short);
+        // let (name, s) = self.check_names(name, short);
 
         self.named.push(Flag {
-            long: name,
-            short: s,
+            long: name.into(),
+            short: short,
             arg: None,
             required: false,
             desc: desc.into(),

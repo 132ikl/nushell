@@ -66,173 +66,175 @@ impl Command for Do {
         call: &Call,
         input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
-        let head = call.head;
-        let block: Closure = call.req(engine_state, caller_stack, 0)?;
-        let rest: Vec<Value> = call.rest(engine_state, caller_stack, 1)?;
-        let ignore_all_errors = call.has_flag(engine_state, caller_stack, "ignore-errors")?;
+        Ok(PipelineData::Empty)
 
-        if call.has_flag(engine_state, caller_stack, "ignore-shell-errors")? {
-            nu_protocol::report_shell_warning(
-                engine_state,
-                &ShellError::GenericError {
-                    error: "Deprecated option".into(),
-                    msg: "`--ignore-shell-errors` is deprecated and will be removed in 0.102.0."
-                        .into(),
-                    span: Some(call.head),
-                    help: Some("Please use the `--ignore-errors(-i)`".into()),
-                    inner: vec![],
-                },
-            );
-        }
-        if call.has_flag(engine_state, caller_stack, "ignore-program-errors")? {
-            nu_protocol::report_shell_warning(
-                engine_state,
-                &ShellError::GenericError {
-                    error: "Deprecated option".into(),
-                    msg: "`--ignore-program-errors` is deprecated and will be removed in 0.102.0."
-                        .into(),
-                    span: Some(call.head),
-                    help: Some("Please use the `--ignore-errors(-i)`".into()),
-                    inner: vec![],
-                },
-            );
-        }
-        let ignore_shell_errors = ignore_all_errors
-            || call.has_flag(engine_state, caller_stack, "ignore-shell-errors")?;
-        let ignore_program_errors = ignore_all_errors
-            || call.has_flag(engine_state, caller_stack, "ignore-program-errors")?;
-        let capture_errors = call.has_flag(engine_state, caller_stack, "capture-errors")?;
-        let has_env = call.has_flag(engine_state, caller_stack, "env")?;
+        // let head = call.head;
+        // let block: Closure = call.req(engine_state, caller_stack, 0)?;
+        // let rest: Vec<Value> = call.rest(engine_state, caller_stack, 1)?;
+        // let ignore_all_errors = call.has_flag(engine_state, caller_stack, "ignore-errors")?;
 
-        let mut callee_stack = caller_stack.captures_to_stack_preserve_out_dest(block.captures);
-        let block = engine_state.get_block(block.block_id);
+        // if call.has_flag(engine_state, caller_stack, "ignore-shell-errors")? {
+        //     nu_protocol::report_shell_warning(
+        //         engine_state,
+        //         &ShellError::GenericError {
+        //             error: "Deprecated option".into(),
+        //             msg: "`--ignore-shell-errors` is deprecated and will be removed in 0.102.0."
+        //                 .into(),
+        //             span: Some(call.head),
+        //             help: Some("Please use the `--ignore-errors(-i)`".into()),
+        //             inner: vec![],
+        //         },
+        //     );
+        // }
+        // if call.has_flag(engine_state, caller_stack, "ignore-program-errors")? {
+        //     nu_protocol::report_shell_warning(
+        //         engine_state,
+        //         &ShellError::GenericError {
+        //             error: "Deprecated option".into(),
+        //             msg: "`--ignore-program-errors` is deprecated and will be removed in 0.102.0."
+        //                 .into(),
+        //             span: Some(call.head),
+        //             help: Some("Please use the `--ignore-errors(-i)`".into()),
+        //             inner: vec![],
+        //         },
+        //     );
+        // }
+        // let ignore_shell_errors = ignore_all_errors
+        //     || call.has_flag(engine_state, caller_stack, "ignore-shell-errors")?;
+        // let ignore_program_errors = ignore_all_errors
+        //     || call.has_flag(engine_state, caller_stack, "ignore-program-errors")?;
+        // let capture_errors = call.has_flag(engine_state, caller_stack, "capture-errors")?;
+        // let has_env = call.has_flag(engine_state, caller_stack, "env")?;
 
-        bind_args_to(&mut callee_stack, &block.signature, rest, head)?;
-        let eval_block_with_early_return = get_eval_block_with_early_return(engine_state);
+        // let mut callee_stack = caller_stack.captures_to_stack_preserve_out_dest(block.captures);
+        // let block = engine_state.get_block(block.block_id);
 
-        let result = eval_block_with_early_return(engine_state, &mut callee_stack, block, input);
+        // bind_args_to(&mut callee_stack, &block.signature, rest, head)?;
+        // let eval_block_with_early_return = get_eval_block_with_early_return(engine_state);
 
-        if has_env {
-            // Merge the block's environment to the current stack
-            redirect_env(engine_state, caller_stack, &callee_stack);
-        }
+        // let result = eval_block_with_early_return(engine_state, &mut callee_stack, block, input);
 
-        match result {
-            Ok(PipelineData::ByteStream(stream, metadata)) if capture_errors => {
-                let span = stream.span();
-                #[cfg(not(feature = "os"))]
-                return Err(ShellError::DisabledOsSupport {
-                    msg: "Cannot create a thread to receive stdout message.".to_string(),
-                    span: Some(span),
-                });
+        // if has_env {
+        //     // Merge the block's environment to the current stack
+        //     redirect_env(engine_state, caller_stack, &callee_stack);
+        // }
 
-                #[cfg(feature = "os")]
-                match stream.into_child() {
-                    Ok(mut child) => {
-                        // Use a thread to receive stdout message.
-                        // Or we may get a deadlock if child process sends out too much bytes to stderr.
-                        //
-                        // For example: in normal linux system, stderr pipe's limit is 65535 bytes.
-                        // if child process sends out 65536 bytes, the process will be hanged because no consumer
-                        // consumes the first 65535 bytes
-                        // So we need a thread to receive stdout message, then the current thread can continue to consume
-                        // stderr messages.
-                        let stdout_handler = child
-                            .stdout
-                            .take()
-                            .map(|mut stdout| {
-                                thread::Builder::new()
-                                    .name("stdout consumer".to_string())
-                                    .spawn(move || {
-                                        let mut buf = Vec::new();
-                                        stdout.read_to_end(&mut buf).map_err(|err| {
-                                            IoError::new_internal(
-                                                err.kind(),
-                                                "Could not read stdout to end",
-                                                nu_protocol::location!(),
-                                            )
-                                        })?;
-                                        Ok::<_, ShellError>(buf)
-                                    })
-                                    .map_err(|err| IoError::new(err.kind(), head, None))
-                            })
-                            .transpose()?;
+        // match result {
+        //     Ok(PipelineData::ByteStream(stream, metadata)) if capture_errors => {
+        //         let span = stream.span();
+        //         #[cfg(not(feature = "os"))]
+        //         return Err(ShellError::DisabledOsSupport {
+        //             msg: "Cannot create a thread to receive stdout message.".to_string(),
+        //             span: Some(span),
+        //         });
 
-                        // Intercept stderr so we can return it in the error if the exit code is non-zero.
-                        // The threading issues mentioned above dictate why we also need to intercept stdout.
-                        let stderr_msg = match child.stderr.take() {
-                            None => String::new(),
-                            Some(mut stderr) => {
-                                let mut buf = String::new();
-                                stderr
-                                    .read_to_string(&mut buf)
-                                    .map_err(|err| IoError::new(err.kind(), span, None))?;
-                                buf
-                            }
-                        };
+        //         #[cfg(feature = "os")]
+        //         match stream.into_child() {
+        //             Ok(mut child) => {
+        //                 // Use a thread to receive stdout message.
+        //                 // Or we may get a deadlock if child process sends out too much bytes to stderr.
+        //                 //
+        //                 // For example: in normal linux system, stderr pipe's limit is 65535 bytes.
+        //                 // if child process sends out 65536 bytes, the process will be hanged because no consumer
+        //                 // consumes the first 65535 bytes
+        //                 // So we need a thread to receive stdout message, then the current thread can continue to consume
+        //                 // stderr messages.
+        //                 let stdout_handler = child
+        //                     .stdout
+        //                     .take()
+        //                     .map(|mut stdout| {
+        //                         thread::Builder::new()
+        //                             .name("stdout consumer".to_string())
+        //                             .spawn(move || {
+        //                                 let mut buf = Vec::new();
+        //                                 stdout.read_to_end(&mut buf).map_err(|err| {
+        //                                     IoError::new_internal(
+        //                                         err.kind(),
+        //                                         "Could not read stdout to end",
+        //                                         nu_protocol::location!(),
+        //                                     )
+        //                                 })?;
+        //                                 Ok::<_, ShellError>(buf)
+        //                             })
+        //                             .map_err(|err| IoError::new(err.kind(), head, None))
+        //                     })
+        //                     .transpose()?;
 
-                        let stdout = if let Some(handle) = stdout_handler {
-                            match handle.join() {
-                                Err(err) => {
-                                    return Err(ShellError::ExternalCommand {
-                                        label: "Fail to receive external commands stdout message"
-                                            .to_string(),
-                                        help: format!("{err:?}"),
-                                        span,
-                                    });
-                                }
-                                Ok(res) => Some(res?),
-                            }
-                        } else {
-                            None
-                        };
+        //                 // Intercept stderr so we can return it in the error if the exit code is non-zero.
+        //                 // The threading issues mentioned above dictate why we also need to intercept stdout.
+        //                 let stderr_msg = match child.stderr.take() {
+        //                     None => String::new(),
+        //                     Some(mut stderr) => {
+        //                         let mut buf = String::new();
+        //                         stderr
+        //                             .read_to_string(&mut buf)
+        //                             .map_err(|err| IoError::new(err.kind(), span, None))?;
+        //                         buf
+        //                     }
+        //                 };
 
-                        child.ignore_error(false);
-                        child.wait()?;
+        //                 let stdout = if let Some(handle) = stdout_handler {
+        //                     match handle.join() {
+        //                         Err(err) => {
+        //                             return Err(ShellError::ExternalCommand {
+        //                                 label: "Fail to receive external commands stdout message"
+        //                                     .to_string(),
+        //                                 help: format!("{err:?}"),
+        //                                 span,
+        //                             });
+        //                         }
+        //                         Ok(res) => Some(res?),
+        //                     }
+        //                 } else {
+        //                     None
+        //                 };
 
-                        let mut child = ChildProcess::from_raw(None, None, None, span);
-                        if let Some(stdout) = stdout {
-                            child.stdout = Some(ChildPipe::Tee(Box::new(Cursor::new(stdout))));
-                        }
-                        if !stderr_msg.is_empty() {
-                            child.stderr = Some(ChildPipe::Tee(Box::new(Cursor::new(stderr_msg))));
-                        }
-                        Ok(PipelineData::ByteStream(
-                            ByteStream::child(child, span),
-                            metadata,
-                        ))
-                    }
-                    Err(stream) => Ok(PipelineData::ByteStream(stream, metadata)),
-                }
-            }
-            Ok(PipelineData::ByteStream(mut stream, metadata))
-                if ignore_program_errors
-                    && !matches!(
-                        caller_stack.stdout(),
-                        OutDest::Pipe | OutDest::PipeSeparate | OutDest::Value
-                    ) =>
-            {
-                #[cfg(feature = "os")]
-                if let ByteStreamSource::Child(child) = stream.source_mut() {
-                    child.ignore_error(true);
-                }
-                Ok(PipelineData::ByteStream(stream, metadata))
-            }
-            Ok(PipelineData::Value(Value::Error { .. }, ..)) | Err(_) if ignore_shell_errors => {
-                Ok(PipelineData::empty())
-            }
-            Ok(PipelineData::ListStream(stream, metadata)) if ignore_shell_errors => {
-                let stream = stream.map(move |value| {
-                    if let Value::Error { .. } = value {
-                        Value::nothing(head)
-                    } else {
-                        value
-                    }
-                });
-                Ok(PipelineData::ListStream(stream, metadata))
-            }
-            r => r,
-        }
+        //                 child.ignore_error(false);
+        //                 child.wait()?;
+
+        //                 let mut child = ChildProcess::from_raw(None, None, None, span);
+        //                 if let Some(stdout) = stdout {
+        //                     child.stdout = Some(ChildPipe::Tee(Box::new(Cursor::new(stdout))));
+        //                 }
+        //                 if !stderr_msg.is_empty() {
+        //                     child.stderr = Some(ChildPipe::Tee(Box::new(Cursor::new(stderr_msg))));
+        //                 }
+        //                 Ok(PipelineData::ByteStream(
+        //                     ByteStream::child(child, span),
+        //                     metadata,
+        //                 ))
+        //             }
+        //             Err(stream) => Ok(PipelineData::ByteStream(stream, metadata)),
+        //         }
+        //     }
+        //     Ok(PipelineData::ByteStream(mut stream, metadata))
+        //         if ignore_program_errors
+        //             && !matches!(
+        //                 caller_stack.stdout(),
+        //                 OutDest::Pipe | OutDest::PipeSeparate | OutDest::Value
+        //             ) =>
+        //     {
+        //         #[cfg(feature = "os")]
+        //         if let ByteStreamSource::Child(child) = stream.source_mut() {
+        //             child.ignore_error(true);
+        //         }
+        //         Ok(PipelineData::ByteStream(stream, metadata))
+        //     }
+        //     Ok(PipelineData::Value(Value::Error { .. }, ..)) | Err(_) if ignore_shell_errors => {
+        //         Ok(PipelineData::empty())
+        //     }
+        //     Ok(PipelineData::ListStream(stream, metadata)) if ignore_shell_errors => {
+        //         let stream = stream.map(move |value| {
+        //             if let Value::Error { .. } = value {
+        //                 Value::nothing(head)
+        //             } else {
+        //                 value
+        //             }
+        //         });
+        //         Ok(PipelineData::ListStream(stream, metadata))
+        //     }
+        //     r => r,
+        // }
     }
 
     fn examples(&self) -> Vec<Example> {
