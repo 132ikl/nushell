@@ -6525,7 +6525,7 @@ pub fn discover_captures_in_expr(
                                 let var_name = working_set.get_span_contents(*span);
                                 return Err(ParseError::CaptureOfMutableVar {
                                     var: String::from_utf8_lossy(var_name).into_owned(),
-                                    var_span: span.before(),
+                                    var_span: *span,
                                     closure_span: block.span,
                                 });
                             }

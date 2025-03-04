@@ -119,11 +119,7 @@ impl miette::Diagnostic for CliError<'_> {
 
     // Finally, we redirect the source_code method to our own source.
     fn source_code(&self) -> Option<&dyn SourceCode> {
-        if let Some(source_code) = self.0.source_code() {
-            Some(source_code)
-        } else {
-            Some(&self.1)
-        }
+        self.0.source_code().or(Some(&self.1))
     }
 
     fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn miette::Diagnostic> + 'a>> {
