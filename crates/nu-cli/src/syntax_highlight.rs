@@ -1,5 +1,5 @@
 use log::trace;
-use nu_ansi_term::Style;
+use nu_ansi_term::{Color, Style};
 use nu_color_config::{get_matching_brackets_style, get_shape_color};
 use nu_engine::env;
 use nu_parser::{flatten_block, parse, FlatShape};
@@ -90,6 +90,8 @@ impl Highlighter for NuHighlighter {
                 output.push((get_shape_color(shape.as_str(), &config), text));
             };
 
+            let trans_id = self.engine_state.find_decl(b"transpose", &[]);
+
             match shape.1 {
                 FlatShape::Garbage => add_colored_token(&shape.1, next_token),
                 FlatShape::Nothing => add_colored_token(&shape.1, next_token),
@@ -98,6 +100,18 @@ impl Highlighter for NuHighlighter {
                 FlatShape::Int => add_colored_token(&shape.1, next_token),
                 FlatShape::Float => add_colored_token(&shape.1, next_token),
                 FlatShape::Range => add_colored_token(&shape.1, next_token),
+                ref shape @ FlatShape::InternalCall(id) if Some(id) == trans_id => {
+                    let pink = Style::new().fg(Color::Rgb(245, 169, 184)).bold();
+                    let blue = Style::new().fg(Color::Rgb(91, 206, 250)).bold();
+                    let white = Style::new().fg(Color::Rgb(255, 255, 255)).bold();
+                    output.push((pink.clone(), "t".into()));
+                    output.push((blue.clone(), "r".into()));
+                    output.push((white, "a".into()));
+                    output.push((blue, "n".into()));
+                    output.push((pink, "s".into()));
+                    output.push((get_shape_color(shape.as_str(), &config), "pose".into()));
+                    // add_colored_token(&shape, "pose".into());
+                }
                 FlatShape::InternalCall(_) => add_colored_token(&shape.1, next_token),
                 FlatShape::External => add_colored_token(&shape.1, next_token),
                 FlatShape::ExternalArg => add_colored_token(&shape.1, next_token),
