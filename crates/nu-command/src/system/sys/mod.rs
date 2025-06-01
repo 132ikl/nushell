@@ -1,6 +1,7 @@
 mod cpu;
 mod disks;
 mod host;
+mod hostname;
 mod mem;
 mod net;
 mod sys_;
@@ -10,6 +11,7 @@ mod users;
 pub use cpu::SysCpu;
 pub use disks::SysDisks;
 pub use host::SysHost;
+pub use hostname::SysHostname;
 pub use mem::SysMem;
 pub use net::SysNet;
 pub use sys_::Sys;

@@ -128,6 +128,7 @@ pub fn add_shell_command_context(mut engine_state: EngineState) -> EngineState {
             SysCpu,
             SysDisks,
             SysHost,
+            SysHostname,
             SysMem,
             SysNet,
             SysTemp,
