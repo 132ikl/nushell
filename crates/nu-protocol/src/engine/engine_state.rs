@@ -889,6 +889,12 @@ impl EngineState {
             .expect("internal error: missing module")
     }
 
+    pub fn get_module_mut(&mut self, module_id: ModuleId) -> &Module {
+        self.modules
+            .get_mut(module_id.get())
+            .expect("internal error: missing module")
+    }
+
     pub fn get_virtual_path(&self, virtual_path_id: VirtualPathId) -> &(String, VirtualPath) {
         self.virtual_paths
             .get(virtual_path_id.get())

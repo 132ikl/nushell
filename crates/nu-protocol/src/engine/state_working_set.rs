@@ -115,6 +115,27 @@ impl<'a> StateWorkingSet<'a> {
     pub fn add_decl(&mut self, decl: Box<dyn Command>) -> DeclId {
         let name = decl.name().as_bytes().to_vec();
 
+        if let Some(modules) = decl.module() {
+            let module = modules.iter().fold(None, |last, name| {
+                let id = if let Some(last_id) = last {
+                    self.get_module(last_id)
+                        .submodules
+                        .get(&name.clone().into_bytes())
+                        .copied()
+                } else {
+                    self.find_module(name.as_bytes())
+                };
+                id.or_else(|| {
+                    let id = self.add_module(&name, Module::new(name.clone().into_bytes()), vec![]);
+                    if let Some(last_id) = last {
+                        self.get_module(last_id)
+                            .add_submodule(name.clone().into_bytes(), id);
+                    }
+                    Some(id)
+                })
+            });
+        }
+
         self.delta.decls.push(decl);
         let decl_id = self.num_decls() - 1;
         let decl_id = DeclId::new(decl_id);
@@ -793,6 +814,19 @@ impl<'a> StateWorkingSet<'a> {
         }
     }
 
+    pub fn get_block_mut(&mut self, block_id: BlockId) -> &mut Block {
+        let num_permanent_blocks = self.permanent_state.num_blocks();
+        if block_id.get() < num_permanent_blocks {
+            panic!("Attempt to mutate a block that is in the permanent (immutable) state")
+        } else {
+            self.delta
+                .blocks
+                .get_mut(block_id.get() - num_permanent_blocks)
+                .map(Arc::make_mut)
+                .expect("internal error: missing block")
+        }
+    }
+
     pub fn get_module(&self, module_id: ModuleId) -> &Module {
         let num_permanent_modules = self.permanent_state.num_modules();
         if module_id.get() < num_permanent_modules {
@@ -805,16 +839,15 @@ impl<'a> StateWorkingSet<'a> {
         }
     }
 
-    pub fn get_block_mut(&mut self, block_id: BlockId) -> &mut Block {
-        let num_permanent_blocks = self.permanent_state.num_blocks();
-        if block_id.get() < num_permanent_blocks {
-            panic!("Attempt to mutate a block that is in the permanent (immutable) state")
+    pub fn get_module_mut(&self, module_id: ModuleId) -> &Module {
+        let num_permanent_modules = self.permanent_state.num_modules();
+        if module_id.get() < num_permanent_modules {
+            self.permanent_state.get_module(module_id)
         } else {
             self.delta
-                .blocks
-                .get_mut(block_id.get() - num_permanent_blocks)
-                .map(Arc::make_mut)
-                .expect("internal error: missing block")
+                .modules
+                .get(module_id.get() - num_permanent_modules)
+                .expect("internal error: missing module")
         }
     }
 

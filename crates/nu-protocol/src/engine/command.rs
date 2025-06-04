@@ -95,6 +95,10 @@ pub trait Command: Send + Sync + CommandClone {
         None
     }
 
+    fn module(&self) -> Option<Vec<String>> {
+        None
+    }
+
     // Return reference to the command as Alias
     fn as_alias(&self) -> Option<&Alias> {
         None

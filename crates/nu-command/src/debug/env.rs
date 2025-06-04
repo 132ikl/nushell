@@ -5,7 +5,7 @@ pub struct DebugEnv;
 
 impl Command for DebugEnv {
     fn name(&self) -> &str {
-        "debug env"
+        "env"
     }
 
     fn signature(&self) -> Signature {
@@ -16,6 +16,10 @@ impl Command for DebugEnv {
 
     fn description(&self) -> &str {
         "Show environment variables as external commands would get it."
+    }
+
+    fn module(&self) -> Option<Vec<String>> {
+        Some(vec!["std".to_string(), "debug".to_string()])
     }
 
     fn run(
