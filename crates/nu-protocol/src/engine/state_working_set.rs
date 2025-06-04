@@ -124,6 +124,12 @@ impl<'a> StateWorkingSet<'a> {
         decl_id
     }
 
+    pub fn add_decl_no_overlay(&mut self, decl: Box<dyn Command>) -> DeclId {
+        self.delta.decls.push(decl);
+        let decl_id = self.num_decls() - 1;
+        DeclId::new(decl_id)
+    }
+
     pub fn use_decls(&mut self, decls: Vec<(Vec<u8>, DeclId)>) {
         let overlay_frame = self.last_overlay_mut();
 

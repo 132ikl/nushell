@@ -9,7 +9,7 @@ pub struct DebugProfile;
 
 impl Command for DebugProfile {
     fn name(&self) -> &str {
-        "debug profile"
+        "profile"
     }
 
     fn signature(&self) -> nu_protocol::Signature {

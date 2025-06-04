@@ -5,11 +5,11 @@ pub struct DebugEnv;
 
 impl Command for DebugEnv {
     fn name(&self) -> &str {
-        "debug env"
+        "env"
     }
 
     fn signature(&self) -> Signature {
-        Signature::new(self.name())
+        Signature::new("debug env")
             .input_output_type(Type::Nothing, Type::record())
             .category(Category::Debug)
     }

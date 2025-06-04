@@ -1,5 +1,8 @@
 use crate::*;
-use nu_protocol::engine::{EngineState, StateWorkingSet};
+use nu_protocol::{
+    Module,
+    engine::{Command, EngineState, StateWorkingSet},
+};
 
 pub fn add_shell_command_context(mut engine_state: EngineState) -> EngineState {
     let delta = {
@@ -148,13 +151,34 @@ pub fn add_shell_command_context(mut engine_state: EngineState) -> EngineState {
             HelpEscapes,
         };
 
-        // Debug
-        bind_command! {
-            Ast,
+        macro_rules! bind_module {
+            ( $name:literal , $( $command:expr ),* $(,)? ) => {
+                let mut module = Module::new($name.as_bytes().to_vec());
+                $(
+                    let decl_id = working_set.add_decl_no_overlay(Box::new($command));
+
+                    let command_name = $command.name();
+                    if command_name == $name {
+                        module.main = Some(decl_id)
+                    } else {
+                        module.add_decl(command_name.as_bytes().to_vec(), decl_id);
+                    }
+                )*
+                working_set.add_module($name, module, vec![]);
+            };
+        }
+
+        bind_module! {
+            "debug",
             Debug,
             DebugEnv,
             DebugInfo,
             DebugProfile,
+        };
+
+        // Debug
+        bind_command! {
+            Ast,
             Explain,
             Inspect,
             Metadata,

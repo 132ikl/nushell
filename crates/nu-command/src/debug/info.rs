@@ -17,7 +17,7 @@ pub struct DebugInfo;
 
 impl Command for DebugInfo {
     fn name(&self) -> &str {
-        "debug info"
+        "info"
     }
 
     fn description(&self) -> &str {
