@@ -4,15 +4,18 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::{
-    CompileError, ErrorStyle, ParseError, ParseWarning, ShellError,
-    engine::{EngineState, StateWorkingSet},
+    CompileError, ErrorStyle, ParseError, ParseWarning, ShellError, Span,
+    engine::{EngineState, Stack, StateWorkingSet},
+    highlight::highlight_code,
 };
 use miette::{
-    LabeledSpan, MietteHandlerOpts, NarratableReportHandler, ReportHandler, RgbColors, Severity,
-    SourceCode,
+    Diagnostic, LabeledSpan, MietteHandlerOpts, NarratableReportHandler, ReportHandler, RgbColors,
+    Severity, SourceCode, SourceSpan,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use super::{ErrorLabel, LabeledError};
 
 /// This error exists so that we can defer SourceCode handling. It simply
 /// forwards most methods, except for `.source_code()`, which we provide.
@@ -94,7 +97,8 @@ pub fn report_compile_error(working_set: &StateWorkingSet, error: &CompileError)
 }
 
 fn report_error(working_set: &StateWorkingSet, error: &dyn miette::Diagnostic) {
-    eprintln!("Error: {:?}", CliError(error, working_set));
+    let error = apply_formatting(working_set.permanent(), error);
+    eprintln!("Error: {:?}", CliError(&error, working_set));
     // reset vt processing, aka ansi because illbehaved externals can break it
     #[cfg(windows)]
     {
@@ -139,6 +143,21 @@ impl std::fmt::Debug for CliError<'_> {
 
         Ok(())
     }
+}
+
+fn apply_formatting(engine_state: &EngineState, diagnostic: &dyn Diagnostic) -> LabeledError {
+    let mut error = LabeledError::from_diagnostic(diagnostic);
+
+    if !engine_state.config.use_ansi_coloring.get(engine_state) {
+        return error;
+    }
+
+    let mut stack = Stack::new();
+    error.msg = highlight_code(&error.msg, engine_state, &mut stack).to_string();
+    if let Some(help) = error.help {
+        error.help = Some(highlight_code(&help, engine_state, &mut stack).to_string())
+    }
+    error
 }
 
 impl miette::Diagnostic for CliError<'_> {

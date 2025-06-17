@@ -12,6 +12,7 @@ mod errors;
 pub mod eval_base;
 pub mod eval_const;
 mod example;
+pub mod highlight;
 mod id;
 pub mod ir;
 mod lev_distance;
