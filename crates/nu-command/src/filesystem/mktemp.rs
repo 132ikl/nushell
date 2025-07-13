@@ -1,6 +1,7 @@
 #[allow(deprecated)]
 use nu_engine::{command_prelude::*, env::current_dir};
-use std::path::PathBuf;
+use std::{error::Error, path::PathBuf};
+use uu_mktemp::MkTempError;
 
 #[derive(Clone)]
 pub struct Mktemp;
@@ -73,10 +74,9 @@ impl Command for Mktemp {
         _input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
         let span = call.head;
-        let template = call
-            .rest(engine_state, stack, 0)?
-            .first()
-            .cloned()
+        let template_spanned = call.rest(engine_state, stack, 0)?.first().cloned();
+        let template = template_spanned
+            .clone()
             .map(|i: Spanned<String>| i.item)
             .unwrap_or("tmp.XXXXXXXXXX".to_string()); // same as default in coreutils
         let directory = call.has_flag(engine_state, stack, "directory")?;
@@ -110,15 +110,29 @@ impl Command for Mktemp {
                 .into_os_string()
                 .into_string()
                 .map_err(|_| ShellError::NonUtf8 { span })?,
-            Err(e) => {
-                return Err(ShellError::GenericError {
-                    error: format!("{e}"),
-                    msg: format!("{e}"),
-                    span: None,
-                    help: None,
-                    inner: vec![],
-                });
-            }
+            Err(e) => match (e as Box<dyn Error>).downcast::<MkTempError>() {
+                Ok(err) => match *err {
+                    MkTempError::PrefixContainsDirSeparator(template) => {
+                        return Err(ShellError::GenericError {
+                            error: "Invalid template".into(),
+                            msg: "contains directory separator".into(),
+                            span: template_spanned.map(|e| e.span),
+                            help: None,
+                            inner: vec![],
+                        });
+                    }
+                    _ => todo!(),
+                },
+                Err(e) => {
+                    return Err(ShellError::GenericError {
+                        error: format!("{e}"),
+                        msg: format!("{e}"),
+                        span: Some(call.head),
+                        help: None,
+                        inner: vec![],
+                    });
+                }
+            },
         };
         Ok(PipelineData::Value(Value::string(res, span), None))
     }

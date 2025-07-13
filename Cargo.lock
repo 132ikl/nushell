@@ -3858,7 +3858,7 @@ dependencies = [
  "uu_touch",
  "uu_uname",
  "uu_whoami",
- "uucore",
+ "uucore 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid",
  "v_htmlescape",
  "wax",
@@ -7870,7 +7870,7 @@ dependencies = [
  "indicatif",
  "libc",
  "quick-error 2.0.1",
- "uucore",
+ "uucore 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir",
  "xattr",
 ]
@@ -7882,20 +7882,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5be556a5d852f55b92bba460d7a97030a340ba4a3f4c510a8d0a893bfaf48356"
 dependencies = [
  "clap",
- "uucore",
+ "uucore 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "uu_mktemp"
 version = "0.0.30"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5305fcf4f7f480e7438e19ff433ae60dea886bd528f87543029eb6b95d351afc"
 dependencies = [
  "clap",
  "rand 0.9.0",
  "tempfile",
  "thiserror 2.0.12",
- "uucore",
+ "uucore 0.0.30",
 ]
 
 [[package]]
@@ -7909,7 +7907,7 @@ dependencies = [
  "indicatif",
  "libc",
  "thiserror 2.0.12",
- "uucore",
+ "uucore 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "windows-sys 0.59.0",
 ]
 
@@ -7924,7 +7922,7 @@ dependencies = [
  "filetime",
  "parse_datetime",
  "thiserror 2.0.12",
- "uucore",
+ "uucore 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "windows-sys 0.59.0",
 ]
 
@@ -7936,7 +7934,7 @@ checksum = "324d96a21da91a81be334206ab65aad16d164d34cddeb640e1c56cd8d1854dd4"
 dependencies = [
  "clap",
  "platform-info",
- "uucore",
+ "uucore 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -7947,8 +7945,24 @@ checksum = "bee254de8b172a5978f12fe6cd9d4f2b60ea9ef1e37f0cb53bfee2c993b3e96a"
 dependencies = [
  "clap",
  "libc",
- "uucore",
+ "uucore 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "uucore"
+version = "0.0.30"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "clap",
+ "glob",
+ "iana-time-zone",
+ "nix 0.29.0",
+ "number_prefix",
+ "os_display",
+ "uucore_procs 0.0.30",
+ "wild",
 ]
 
 [[package]]
@@ -7967,7 +7981,7 @@ dependencies = [
  "nix 0.29.0",
  "number_prefix",
  "os_display",
- "uucore_procs",
+ "uucore_procs 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir",
  "wild",
  "winapi-util",
@@ -7978,13 +7992,26 @@ dependencies = [
 [[package]]
 name = "uucore_procs"
 version = "0.0.30"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "uuhelp_parser 0.0.30",
+]
+
+[[package]]
+name = "uucore_procs"
+version = "0.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c72435859e812e602e225dea48d014abb6b1072220a8d44f2fe0565553b1f7e4"
 dependencies = [
  "proc-macro2",
  "quote",
- "uuhelp_parser",
+ "uuhelp_parser 0.0.30 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "uuhelp_parser"
+version = "0.0.30"
 
 [[package]]
 name = "uuhelp_parser"
