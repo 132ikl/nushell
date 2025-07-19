@@ -15,7 +15,6 @@ use crate::{
     config_files::set_config_path,
     logger::{configure, logger},
 };
-use command::gather_commandline_args;
 use log::{Level, trace};
 use miette::Result;
 use nu_cli::gather_parent_env_vars;
@@ -23,8 +22,8 @@ use nu_engine::{convert_env_values, exit::cleanup_exit};
 use nu_lsp::LanguageServer;
 use nu_path::canonicalize_with;
 use nu_protocol::{
-    ByteStream, Config, IntoValue, PipelineData, ShellError, Span, Spanned, Type, Value,
-    engine::Stack, record, report_shell_error,
+    ByteStream, Config, IntoSpanned, IntoValue, PipelineData, ShellError, Span, Spanned, Type,
+    Value, engine::Stack, record, report_shell_error,
 };
 use nu_std::load_standard_library;
 use nu_utils::perf;
@@ -195,12 +194,22 @@ fn main() -> Result<()> {
     #[cfg(feature = "sqlite")]
     db.last_insert_rowid();
 
-    let (args_to_nushell, script_name, args_to_script) = gather_commandline_args();
-    let parsed_nu_cli_args = parse_commandline_args(&args_to_nushell.join(" "), &mut engine_state)
-        .unwrap_or_else(|err| {
-            report_shell_error(&engine_state, &err);
-            std::process::exit(1)
-        });
+    // let (args_to_nushell, script, args_to_script) = gather_commandline_args();
+
+    // let Spanned {
+    //     item: script_name,
+    //     span: script_span,
+    // } = script;
+
+    let parsed_nu_cli_args = parse_commandline_args(&mut engine_state).unwrap_or_else(|err| {
+        report_shell_error(&engine_state, &err);
+        std::process::exit(1)
+    });
+    let script_name = parsed_nu_cli_args
+        .script_file
+        .clone() // TODO
+        .map(|e| e.item)
+        .unwrap_or_default();
 
     experimental_options::load(&engine_state, &parsed_nu_cli_args, !script_name.is_empty());
 
@@ -490,14 +499,13 @@ fn main() -> Result<()> {
         );
 
         cleanup_exit(0, &engine_state, 0);
-    } else if !script_name.is_empty() {
+    } else if let Some(script_file) = parsed_nu_cli_args.script_file.clone() {
         run_file(
             &mut engine_state,
             stack,
+            script_file,
             parsed_nu_cli_args,
             use_color,
-            script_name,
-            args_to_script,
             input,
         );
 

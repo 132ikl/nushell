@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use nu_engine::{command_prelude::*, get_full_help};
 use nu_parser::{escape_for_script_arg, parse};
 use nu_protocol::{
@@ -7,77 +8,91 @@ use nu_protocol::{
 };
 use nu_utils::{escape_quote_string, stdout_write_all_and_flush};
 
-pub(crate) fn gather_commandline_args() -> (Vec<String>, String, Vec<String>) {
-    // Would be nice if we had a way to parse this. The first flags we see will be going to nushell
-    // then it'll be the script name
-    // then the args to the script
-    let mut args_to_nushell = Vec::from(["nu".into()]);
-    let mut script_name = String::new();
-    let mut args = std::env::args();
+// pub(crate) fn gather_commandline_args() -> (Vec<String>, Spanned<String>, Vec<String>) {
+//     // Would be nice if we had a way to parse this. The first flags we see will be going to nushell
+//     // then it'll be the script name
+//     // then the args to the script
+//     let mut args_to_nushell = Vec::from(["nu".into()]);
+//     let mut script_name: Spanned<String> = String::new().into_spanned(Span::unknown());
 
-    // Mimic the behaviour of bash/zsh
-    if let Some(argv0) = args.next() {
-        if argv0.starts_with('-') {
-            args_to_nushell.push("--login".into());
-        }
-    }
+//     let indexed_args = std::env::args().into_iter().fold(vec![], |acc, arg| {
+//         let offset: usize = acc.last().map(|(val, off)| *off).unwrap_or(0);
+//         acc.push((arg, offset));
+//         acc
+//     });
+//     let args = indexed_args.into_iter();
 
-    while let Some(arg) = args.next() {
-        if !arg.starts_with('-') {
-            script_name = arg;
-            break;
-        }
+//     let mut args_offset: usize = "nu".len();
 
-        let flag_value = match arg.as_ref() {
-            "--commands" | "-c" | "--table-mode" | "-m" | "--error-style" | "-e" | "--execute"
-            | "--config" | "--env-config" | "-I" | "ide-ast" => {
-                args.next().map(|a| escape_quote_string(&a))
-            }
-            #[cfg(feature = "plugin")]
-            "--plugin-config" => args.next().map(|a| escape_quote_string(&a)),
-            "--log-level"
-            | "--log-target"
-            | "--log-include"
-            | "--log-exclude"
-            | "--testbin"
-            | "--threads"
-            | "-t"
-            | "--include-path"
-            | "--lsp"
-            | "--ide-goto-def"
-            | "--ide-hover"
-            | "--ide-complete"
-            | "--ide-check"
-            | "--experimental-options" => args.next(),
-            #[cfg(feature = "plugin")]
-            "--plugins" => args.next(),
-            _ => None,
-        };
+//     // Mimic the behaviour of bash/zsh
+//     if let Some(argv0) = args.next() {
+//         if argv0.starts_with('-') {
+//             args_to_nushell.push("--login".into());
+//         }
+//     }
 
-        args_to_nushell.push(arg);
+//     while let Some(arg) = args.next() {
+//         if !arg.starts_with('-') {
+//             let len = arg.len();
+//             script_name = arg.into_spanned(Span::new(args_offset, args_offset + len));
+//             break;
+//         }
 
-        if let Some(flag_value) = flag_value {
-            args_to_nushell.push(flag_value);
-        }
-    }
+//         args_offset += arg.len();
 
-    let args_to_script = if !script_name.is_empty() {
-        args.map(|arg| escape_for_script_arg(&arg)).collect()
-    } else {
-        Vec::default()
-    };
-    (args_to_nushell, script_name, args_to_script)
-}
+//         let flag_value = match arg.as_ref() {
+//             "--commands" | "-c" | "--table-mode" | "-m" | "--error-style" | "-e" | "--execute"
+//             | "--config" | "--env-config" | "-I" | "ide-ast" => {
+//                 args.next().map(|a| escape_quote_string(&a))
+//             }
+//             #[cfg(feature = "plugin")]
+//             "--plugin-config" => args.next().map(|a| escape_quote_string(&a)),
+//             "--log-level"
+//             | "--log-target"
+//             | "--log-include"
+//             | "--log-exclude"
+//             | "--testbin"
+//             | "--threads"
+//             | "-t"
+//             | "--include-path"
+//             | "--lsp"
+//             | "--ide-goto-def"
+//             | "--ide-hover"
+//             | "--ide-complete"
+//             | "--ide-check"
+//             | "--experimental-options" => args.next(),
+//             #[cfg(feature = "plugin")]
+//             "--plugins" => args.next(),
+//             _ => None,
+//         };
+
+//         args_to_nushell.push(arg);
+
+//         if let Some(flag_value) = flag_value {
+//             args_to_nushell.push(flag_value);
+//         }
+//     }
+
+//     let args_to_script = if !script_name.item.is_empty() {
+//         args.map(|arg| escape_for_script_arg(&arg)).collect()
+//     } else {
+//         Vec::default()
+//     };
+//     (args_to_nushell, script_name, args_to_script)
+// }
 
 pub(crate) fn parse_commandline_args(
-    commandline_args: &str,
     engine_state: &mut EngineState,
 ) -> Result<NushellCliArgs, ShellError> {
+    let mut args = std::env::args();
+    let argv0 = args.next();
+    let commandline = std::iter::once("nu".to_string()).chain(args).join(" ");
+
     let (block, delta) = {
         let mut working_set = StateWorkingSet::new(engine_state);
         working_set.add_decl(Box::new(Nu));
 
-        let output = parse(&mut working_set, None, commandline_args.as_bytes(), false);
+        let output = parse(&mut working_set, None, commandline.as_bytes(), false);
         if let Some(err) = working_set.parse_errors.first() {
             report_parse_error(&working_set, err);
             std::process::exit(1);
@@ -94,127 +109,56 @@ pub(crate) fn parse_commandline_args(
     // We should have a successful parse now
     if let Some(pipeline) = block.pipelines.first() {
         if let Some(Expr::Call(call)) = pipeline.elements.first().map(|e| &e.expr.expr) {
+            type StringArg = Option<Spanned<String>>;
+            type ListArg = Option<Vec<Spanned<String>>>;
+
+            let login_shell = if argv0.is_some_and(|arg| arg.starts_with("-")) {
+                Some("--login".to_string().into_spanned(Span::unknown()))
+            } else {
+                call.get_named_arg("login")
+            };
+
             let redirect_stdin = call.get_named_arg("stdin");
-            let login_shell = call.get_named_arg("login");
             let interactive_shell = call.get_named_arg("interactive");
-            let commands = call.get_flag_expr("commands");
-            let testbin = call.get_flag_expr("testbin");
+            let commands: StringArg = call.get_flag(engine_state, &mut stack, "commands")?;
+            let testbin: StringArg = call.get_flag(engine_state, &mut stack, "testbin")?;
             #[cfg(feature = "plugin")]
-            let plugin_file = call.get_flag_expr("plugin-config");
+            let plugin_file: StringArg =
+                call.get_flag(engine_state, &mut stack, "plugin-config")?;
             #[cfg(feature = "plugin")]
-            let plugins = call.get_flag_expr("plugins");
+            let plugins: ListArg = call.get_flag(engine_state, &mut stack, "plugins")?;
             let no_config_file = call.get_named_arg("no-config-file");
             let no_history = call.get_named_arg("no-history");
             let no_std_lib = call.get_named_arg("no-std-lib");
-            let config_file = call.get_flag_expr("config");
-            let env_file = call.get_flag_expr("env-config");
-            let log_level = call.get_flag_expr("log-level");
-            let log_target = call.get_flag_expr("log-target");
-            let log_include = call.get_flag_expr("log-include");
-            let log_exclude = call.get_flag_expr("log-exclude");
-            let execute = call.get_flag_expr("execute");
+            let config_file: StringArg = call.get_flag(engine_state, &mut stack, "config")?;
+            let env_file: StringArg = call.get_flag(engine_state, &mut stack, "env-config")?;
+            let log_level: StringArg = call.get_flag(engine_state, &mut stack, "log-level")?;
+            let log_target: StringArg = call.get_flag(engine_state, &mut stack, "log-target")?;
+            let log_include: ListArg = call.get_flag(engine_state, &mut stack, "log-include")?;
+            let log_exclude: ListArg = call.get_flag(engine_state, &mut stack, "log-exclude")?;
+            let execute: StringArg = call.get_flag(engine_state, &mut stack, "execute")?;
             let table_mode: Option<Value> =
                 call.get_flag(engine_state, &mut stack, "table-mode")?;
             let error_style: Option<Value> =
                 call.get_flag(engine_state, &mut stack, "error-style")?;
             let no_newline = call.get_named_arg("no-newline");
-            let experimental_options = call.get_flag_expr("experimental-options");
+            let experimental_options: ListArg =
+                call.get_flag(engine_state, &mut stack, "experimental-options")?;
 
             // ide flags
             let lsp = call.has_flag(engine_state, &mut stack, "lsp")?;
-            let include_path = call.get_flag_expr("include-path");
+            let include_path: StringArg =
+                call.get_flag(engine_state, &mut stack, "include-path")?;
             let ide_goto_def: Option<Value> =
                 call.get_flag(engine_state, &mut stack, "ide-goto-def")?;
             let ide_hover: Option<Value> = call.get_flag(engine_state, &mut stack, "ide-hover")?;
             let ide_complete: Option<Value> =
                 call.get_flag(engine_state, &mut stack, "ide-complete")?;
             let ide_check: Option<Value> = call.get_flag(engine_state, &mut stack, "ide-check")?;
-            let ide_ast: Option<Spanned<String>> = call.get_named_arg("ide-ast");
+            let ide_ast: StringArg = call.get_named_arg("ide-ast");
 
-            fn extract_contents(
-                expression: Option<&Expression>,
-            ) -> Result<Option<Spanned<String>>, ShellError> {
-                if let Some(expr) = expression {
-                    let str = expr.as_string();
-                    if let Some(str) = str {
-                        Ok(Some(Spanned {
-                            item: str,
-                            span: expr.span,
-                        }))
-                    } else {
-                        Err(ShellError::TypeMismatch {
-                            err_message: "string".into(),
-                            span: expr.span,
-                        })
-                    }
-                } else {
-                    Ok(None)
-                }
-            }
-
-            fn extract_path(
-                expression: Option<&Expression>,
-            ) -> Result<Option<Spanned<String>>, ShellError> {
-                if let Some(expr) = expression {
-                    let tuple = expr.as_filepath();
-                    if let Some((str, _)) = tuple {
-                        Ok(Some(Spanned {
-                            item: str,
-                            span: expr.span,
-                        }))
-                    } else {
-                        Err(ShellError::TypeMismatch {
-                            err_message: "path".into(),
-                            span: expr.span,
-                        })
-                    }
-                } else {
-                    Ok(None)
-                }
-            }
-
-            fn extract_list(
-                expression: Option<&Expression>,
-                type_name: &str,
-                mut extract_item: impl FnMut(&Expression) -> Option<String>,
-            ) -> Result<Option<Vec<Spanned<String>>>, ShellError> {
-                expression
-                    .map(|expr| match &expr.expr {
-                        Expr::List(list) => list
-                            .iter()
-                            .map(|item| {
-                                extract_item(item.expr())
-                                    .map(|s| s.into_spanned(item.expr().span))
-                                    .ok_or_else(|| ShellError::TypeMismatch {
-                                        err_message: type_name.into(),
-                                        span: item.expr().span,
-                                    })
-                            })
-                            .collect::<Result<Vec<Spanned<String>>, _>>(),
-                        _ => Err(ShellError::TypeMismatch {
-                            err_message: format!("list<{type_name}>"),
-                            span: expr.span,
-                        }),
-                    })
-                    .transpose()
-            }
-
-            let commands = extract_contents(commands)?;
-            let testbin = extract_contents(testbin)?;
-            #[cfg(feature = "plugin")]
-            let plugin_file = extract_path(plugin_file)?;
-            #[cfg(feature = "plugin")]
-            let plugins = extract_list(plugins, "path", |expr| expr.as_filepath().map(|t| t.0))?;
-            let config_file = extract_path(config_file)?;
-            let env_file = extract_path(env_file)?;
-            let log_level = extract_contents(log_level)?;
-            let log_target = extract_contents(log_target)?;
-            let log_include = extract_list(log_include, "string", |expr| expr.as_string())?;
-            let log_exclude = extract_list(log_exclude, "string", |expr| expr.as_string())?;
-            let execute = extract_contents(execute)?;
-            let include_path = extract_contents(include_path)?;
-            let experimental_options =
-                extract_list(experimental_options, "string", |expr| expr.as_string())?;
+            let script_file: Option<Spanned<String>> = call.opt(engine_state, &mut stack, 0)?;
+            let script_args: Vec<Spanned<String>> = call.rest(engine_state, &mut stack, 0)?;
 
             let help = call.has_flag(engine_state, &mut stack, "help")?;
 
@@ -236,6 +180,8 @@ pub(crate) fn parse_commandline_args(
             }
 
             return Ok(NushellCliArgs {
+                script_file,
+                script_args,
                 redirect_stdin,
                 login_shell,
                 interactive_shell,
@@ -278,6 +224,8 @@ pub(crate) fn parse_commandline_args(
 
 #[derive(Clone)]
 pub(crate) struct NushellCliArgs {
+    pub(crate) script_file: Option<Spanned<String>>,
+    pub(crate) script_args: Vec<Spanned<String>>,
     pub(crate) redirect_stdin: Option<Spanned<String>>,
     pub(crate) login_shell: Option<Spanned<String>>,
     pub(crate) interactive_shell: Option<Spanned<String>>,

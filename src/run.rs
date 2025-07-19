@@ -108,10 +108,9 @@ pub(crate) fn run_commands(
 pub(crate) fn run_file(
     engine_state: &mut EngineState,
     mut stack: Stack,
+    script_file: Spanned<String>,
     parsed_nu_cli_args: command::NushellCliArgs,
     use_color: bool,
-    script_name: String,
-    args_to_script: Vec<String>,
     input: PipelineData,
 ) {
     trace!("run_file");
@@ -161,8 +160,8 @@ pub(crate) fn run_file(
 
     let start_time = std::time::Instant::now();
     let result = evaluate_file(
-        script_name,
-        &args_to_script,
+        script_file,
+        parsed_nu_cli_args.script_args,
         engine_state,
         &mut stack,
         input,

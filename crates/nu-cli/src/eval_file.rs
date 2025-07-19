@@ -1,10 +1,11 @@
 use crate::util::{eval_source, print_pipeline};
+use itertools::Itertools;
 use log::{info, trace};
 use nu_engine::eval_block;
 use nu_parser::parse;
 use nu_path::canonicalize_with;
 use nu_protocol::{
-    PipelineData, ShellError, Span, Value,
+    PipelineData, ShellError, Span, Spanned, Value,
     debugger::WithoutDebug,
     engine::{EngineState, Stack, StateWorkingSet},
     report_error::report_compile_error,
@@ -18,20 +19,19 @@ use std::{path::PathBuf, sync::Arc};
 /// If the file contains a main command, it is invoked with `args` and the pipeline data from `input`;
 /// otherwise, the pipeline data is forwarded to the first command in the file, and `args` are ignored.
 pub fn evaluate_file(
-    path: String,
-    args: &[String],
+    path: Spanned<String>,
+    args: Vec<Spanned<String>>,
     engine_state: &mut EngineState,
     stack: &mut Stack,
     input: PipelineData,
 ) -> Result<(), ShellError> {
     let cwd = engine_state.cwd_as_string(Some(stack))?;
 
-    let file_path = canonicalize_with(&path, cwd).map_err(|err| {
-        IoError::new_internal_with_path(
+    let file_path = canonicalize_with(&path.item, cwd).map_err(|err| {
+        IoError::new(
             err.not_found_as(NotFound::File),
-            "Could not access file",
-            nu_protocol::location!(),
-            PathBuf::from(&path),
+            path.span,
+            PathBuf::from(&path.item),
         )
     })?;
 
@@ -46,21 +46,21 @@ pub fn evaluate_file(
         })?;
 
     let file = std::fs::read(&file_path).map_err(|err| {
-        IoError::new_internal_with_path(
+        IoError::new_with_additional_context(
             err.not_found_as(NotFound::File),
-            "Could not read file",
-            nu_protocol::location!(),
+            path.span,
             file_path.clone(),
+            "Could not read file",
         )
     })?;
     engine_state.file = Some(file_path.clone());
 
     let parent = file_path.parent().ok_or_else(|| {
-        IoError::new_internal_with_path(
+        IoError::new_with_additional_context(
             ErrorKind::DirectoryNotFound,
-            "The file path does not have a parent",
-            nu_protocol::location!(),
+            path.span,
             file_path.clone(),
+            "The file path does not have a parent",
         )
     })?;
 
@@ -74,7 +74,7 @@ pub fn evaluate_file(
     );
     stack.add_env_var(
         "PROCESS_PATH".to_string(),
-        Value::string(path, Span::unknown()),
+        Value::string(path.item, Span::unknown()),
     );
 
     let source_filename = file_path
@@ -131,7 +131,7 @@ pub fn evaluate_file(
 
         // Invoke the main command with arguments.
         // Arguments with whitespaces are quoted, thus can be safely concatenated by whitespace.
-        let args = format!("main {}", args.join(" "));
+        let args = format!("main {}", args.into_iter().map(|e| e.item).join(" "));
         eval_source(
             engine_state,
             stack,
