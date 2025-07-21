@@ -653,9 +653,9 @@ fn parse_short_flags(
 
     let arg_contents = working_set.get_span_contents(arg_span);
 
-    if let Ok(arg_contents_uft8_ref) = str::from_utf8(arg_contents) {
-        if arg_contents_uft8_ref.starts_with('-') && arg_contents_uft8_ref.len() > 1 {
-            let short_flags = &arg_contents_uft8_ref[1..];
+    if let Ok(arg_contents_utf8_ref) = str::from_utf8(arg_contents) {
+        if arg_contents_utf8_ref.starts_with('-') && arg_contents_utf8_ref.len() > 1 {
+            let short_flags = &arg_contents_utf8_ref[1..];
             let num_chars = short_flags.chars().count();
             let mut found_short_flags = vec![];
             let mut unmatched_short_flags = vec![];
@@ -720,12 +720,12 @@ fn parse_flag_terminator(
 
     let arg_contents = working_set.get_span_contents(arg_span);
 
-    let Ok(arg_contents_uft8_ref) = str::from_utf8(arg_contents) else {
+    let Ok(arg_contents_utf8_ref) = str::from_utf8(arg_contents) else {
         working_set.error(ParseError::NonUtf8(arg_span));
         return false;
     };
 
-    arg_contents_uft8_ref == "--"
+    arg_contents_utf8_ref == "--"
 }
 
 fn first_kw_idx(
