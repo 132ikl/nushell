@@ -2,6 +2,7 @@ use nu_utils::escape_quote_string;
 
 fn string_should_be_quoted(input: &str) -> bool {
     input.starts_with('$')
+        || input.is_empty()
         || input.chars().any(|c| {
             c == ' '
                 || c == '('
