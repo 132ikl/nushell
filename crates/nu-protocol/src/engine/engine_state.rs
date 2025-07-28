@@ -1125,6 +1125,16 @@ impl GetSpan for &EngineState {
     }
 }
 
+impl GetSpan for &mut EngineState {
+    /// Get existing span
+    fn get_span(&self, span_id: SpanId) -> Span {
+        *self
+            .spans
+            .get(span_id.get())
+            .expect("internal error: missing span")
+    }
+}
+
 impl Default for EngineState {
     fn default() -> Self {
         Self::new()
