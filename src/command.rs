@@ -1,6 +1,6 @@
 use nu_engine::{command_prelude::*, get_full_help};
 use nu_parser::parse_internal_call;
-use nu_protocol::{engine::StateWorkingSet, report_parse_error};
+use nu_protocol::{ParseError, ast::Argument, engine::StateWorkingSet, report_parse_error};
 use nu_utils::stdout_write_all_and_flush;
 
 pub(crate) fn parse_commandline_args(
@@ -86,8 +86,30 @@ pub(crate) fn parse_commandline_args(
     let ide_check: Option<Value> = call.get_flag(engine_state, &mut stack, "ide-check")?;
     let ide_ast: StringArg = call.get_named_arg("ide-ast");
 
+    // Manually check if unknown flags appear before a script name
+    for arg in &call.arguments {
+        match arg {
+            Argument::Positional(_) => break,
+            Argument::Unknown(expr) => {
+                let sig = Nu.signature();
+                let span = expr.span(&engine_state);
+                let flag = engine_state.get_span_contents(span);
+                let error = ParseError::UnknownFlag(
+                    sig.name.clone(),
+                    String::from_utf8_lossy(flag).to_string(),
+                    span,
+                    sig.formatted_flags(),
+                );
+                report_parse_error(&StateWorkingSet::new(engine_state), &error);
+                std::process::exit(1);
+            }
+            // shouldn't be possible
+            _ => (),
+        }
+    }
+
     let script_file: Option<Spanned<String>> = call.opt(engine_state, &mut stack, 0)?;
-    let script_args: Vec<Spanned<String>> = call.rest(engine_state, &mut stack, 0)?;
+    let script_args: Vec<Spanned<String>> = call.rest(engine_state, &mut stack, 1)?;
 
     let help = call.has_flag(engine_state, &mut stack, "help")?;
 
@@ -107,7 +129,7 @@ pub(crate) fn parse_commandline_args(
         std::process::exit(0);
     }
 
-    return Ok(NushellCliArgs {
+    Ok(NushellCliArgs {
         script_file,
         script_args,
         redirect_stdin,
@@ -140,7 +162,7 @@ pub(crate) fn parse_commandline_args(
         error_style,
         no_newline,
         experimental_options,
-    });
+    })
 }
 
 #[derive(Clone)]
@@ -353,7 +375,7 @@ impl Command for Nu {
                 SyntaxShape::String,
                 "parameters to the script file",
             )
-            .allows_unknown_args()
+            .allows_unknown_args() // for script arguments
             .category(Category::System);
 
         signature
