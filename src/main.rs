@@ -22,8 +22,8 @@ use nu_engine::{convert_env_values, exit::cleanup_exit};
 use nu_lsp::LanguageServer;
 use nu_path::canonicalize_with;
 use nu_protocol::{
-    ByteStream, Config, IntoSpanned, IntoValue, PipelineData, ShellError, Span, Spanned, Type,
-    Value, engine::Stack, record, report_shell_error,
+    ByteStream, Config, IntoValue, PipelineData, ShellError, Span, Spanned, Type, Value,
+    engine::Stack, record, report_shell_error,
 };
 use nu_std::load_standard_library;
 use nu_utils::perf;

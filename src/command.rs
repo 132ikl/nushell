@@ -1,13 +1,14 @@
 use nu_engine::{command_prelude::*, get_full_help};
-use nu_parser::parse_internal_call;
+use nu_parser::{escape_for_script_arg, parse_internal_call};
 use nu_protocol::{ParseError, ast::Argument, engine::StateWorkingSet, report_parse_error};
 use nu_utils::stdout_write_all_and_flush;
 
 pub(crate) fn parse_commandline_args(
     engine_state: &mut EngineState,
 ) -> Result<NushellCliArgs, ShellError> {
+    // add quotes which were stripped when needed
+    let mut args: Vec<String> = std::env::args().map(escape_for_script_arg).collect();
     // extract argv0 and replace it with "nu"
-    let mut args: Vec<String> = std::env::args().collect();
     let argv0 = std::mem::replace(&mut args[0], "nu".to_string());
 
     // get a string version of the commandline,

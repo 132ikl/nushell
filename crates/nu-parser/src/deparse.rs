@@ -21,7 +21,7 @@ fn string_should_be_quoted(input: &str) -> bool {
 // input argument is a flag with =, the first two points apply to the value (--foo=bar -> --foo=bar; --foo=bar' -> --foo="bar'")
 //
 // special characters are white space, (, ', `, ",and \
-pub fn escape_for_script_arg(input: &str) -> String {
+pub fn escape_for_script_arg(input: String) -> String {
     // handle for flag, maybe we need to escape the value.
     if input.starts_with("--") {
         if let Some((arg_name, arg_val)) = input.split_once('=') {
@@ -34,13 +34,13 @@ pub fn escape_for_script_arg(input: &str) -> String {
 
             return format!("{arg_name}={arg_val}");
         } else {
-            return input.into();
+            return input;
         }
     }
-    if string_should_be_quoted(input) {
-        escape_quote_string(input)
+    if string_should_be_quoted(&input) {
+        escape_quote_string(&input)
     } else {
-        input.into()
+        input
     }
 }
 
@@ -48,12 +48,16 @@ pub fn escape_for_script_arg(input: &str) -> String {
 mod test {
     use super::escape_for_script_arg;
 
+    fn escape_for_script_arg_str(input: &str) -> String {
+        escape_for_script_arg(input.to_string())
+    }
+
     #[test]
     fn test_not_extra_quote() {
         // check for input arg like this:
         // nu b.nu word 8
-        assert_eq!(escape_for_script_arg("word"), "word".to_string());
-        assert_eq!(escape_for_script_arg("8"), "8".to_string());
+        assert_eq!(escape_for_script_arg_str("word"), "word".to_string());
+        assert_eq!(escape_for_script_arg_str("8"), "8".to_string());
     }
 
     #[test]
@@ -67,7 +71,7 @@ mod test {
         ];
 
         for (input, expected) in cases {
-            assert_eq!(escape_for_script_arg(input).as_str(), expected);
+            assert_eq!(escape_for_script_arg_str(input).as_str(), expected);
         }
     }
 
@@ -75,16 +79,19 @@ mod test {
     fn test_arg_with_flag() {
         // check for input arg like this:
         // nu b.nu --linux --version=v5.2
-        assert_eq!(escape_for_script_arg("--linux"), "--linux".to_string());
+        assert_eq!(escape_for_script_arg_str("--linux"), "--linux".to_string());
         assert_eq!(
-            escape_for_script_arg("--version=v5.2"),
+            escape_for_script_arg_str("--version=v5.2"),
             "--version=v5.2".to_string()
         );
 
         // check for input arg like this:
         // nu b.nu linux --version v5.2
-        assert_eq!(escape_for_script_arg("--version"), "--version".to_string());
-        assert_eq!(escape_for_script_arg("v5.2"), "v5.2".to_string());
+        assert_eq!(
+            escape_for_script_arg_str("--version"),
+            "--version".to_string()
+        );
+        assert_eq!(escape_for_script_arg_str("v5.2"), "v5.2".to_string());
     }
 
     #[test]
@@ -92,11 +99,11 @@ mod test {
         // check for input arg like this:
         // nu b.nu test_ver --version='xx yy' --separator="`"
         assert_eq!(
-            escape_for_script_arg("--version='xx yy'"),
+            escape_for_script_arg_str("--version='xx yy'"),
             r#"--version="'xx yy'""#.to_string()
         );
         assert_eq!(
-            escape_for_script_arg("--separator=`"),
+            escape_for_script_arg_str("--separator=`"),
             r#"--separator="`""#.to_string()
         );
     }
@@ -105,9 +112,9 @@ mod test {
     fn test_escape() {
         // check for input arg like this:
         // nu b.nu \ --arg='"'
-        assert_eq!(escape_for_script_arg(r"\"), r#""\\""#.to_string());
+        assert_eq!(escape_for_script_arg_str(r"\"), r#""\\""#.to_string());
         assert_eq!(
-            escape_for_script_arg(r#"--arg=""#),
+            escape_for_script_arg_str(r#"--arg=""#),
             r#"--arg="\"""#.to_string()
         );
     }
