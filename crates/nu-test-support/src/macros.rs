@@ -296,7 +296,8 @@ pub fn nu_run_test(opts: NuOpts, commands: impl AsRef<str>, with_std: bool) -> O
     // Use plain errors to help make error text matching more consistent
     command.args(["--error-style", "plain"]);
     command
-        .arg(format!("-c {}", escape_quote_string(&commands)))
+        .arg("-c")
+        .arg(commands)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
