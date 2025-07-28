@@ -722,7 +722,7 @@ fn external_error_with_backtrace() {
 
 #[test]
 fn sub_external_expression_with_and_op_should_raise_proper_error() {
-    let actual = nu!("(nu --testbin cococo false) and true");
+    let actual = nu!("(nu --testbin cococo '(false)') and true");
     assert!(
         actual
             .err
