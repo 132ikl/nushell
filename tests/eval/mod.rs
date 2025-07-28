@@ -72,7 +72,7 @@ fn test_eval(source: &str, expected_out: ExpectedOut) {
 
 #[test]
 fn literal_bool() {
-    test_eval("true", Eq("true"))
+    test_eval("(true)", Eq("true"))
 }
 
 #[test]
@@ -162,7 +162,7 @@ fn literal_date() {
 
 #[test]
 fn literal_nothing() {
-    test_eval("null", Eq(""))
+    test_eval("(null)", Eq(""))
 }
 
 #[test]
