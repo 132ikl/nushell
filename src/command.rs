@@ -1,105 +1,42 @@
-use itertools::Itertools;
 use nu_engine::{command_prelude::*, get_full_help};
-use nu_parser::{escape_for_script_arg, parse};
-use nu_protocol::{
-    ast::{Expr, Expression},
-    engine::StateWorkingSet,
-    report_parse_error,
-};
-use nu_utils::{escape_quote_string, stdout_write_all_and_flush};
-
-// pub(crate) fn gather_commandline_args() -> (Vec<String>, Spanned<String>, Vec<String>) {
-//     // Would be nice if we had a way to parse this. The first flags we see will be going to nushell
-//     // then it'll be the script name
-//     // then the args to the script
-//     let mut args_to_nushell = Vec::from(["nu".into()]);
-//     let mut script_name: Spanned<String> = String::new().into_spanned(Span::unknown());
-
-//     let indexed_args = std::env::args().into_iter().fold(vec![], |acc, arg| {
-//         let offset: usize = acc.last().map(|(val, off)| *off).unwrap_or(0);
-//         acc.push((arg, offset));
-//         acc
-//     });
-//     let args = indexed_args.into_iter();
-
-//     let mut args_offset: usize = "nu".len();
-
-//     // Mimic the behaviour of bash/zsh
-//     if let Some(argv0) = args.next() {
-//         if argv0.starts_with('-') {
-//             args_to_nushell.push("--login".into());
-//         }
-//     }
-
-//     while let Some(arg) = args.next() {
-//         if !arg.starts_with('-') {
-//             let len = arg.len();
-//             script_name = arg.into_spanned(Span::new(args_offset, args_offset + len));
-//             break;
-//         }
-
-//         args_offset += arg.len();
-
-//         let flag_value = match arg.as_ref() {
-//             "--commands" | "-c" | "--table-mode" | "-m" | "--error-style" | "-e" | "--execute"
-//             | "--config" | "--env-config" | "-I" | "ide-ast" => {
-//                 args.next().map(|a| escape_quote_string(&a))
-//             }
-//             #[cfg(feature = "plugin")]
-//             "--plugin-config" => args.next().map(|a| escape_quote_string(&a)),
-//             "--log-level"
-//             | "--log-target"
-//             | "--log-include"
-//             | "--log-exclude"
-//             | "--testbin"
-//             | "--threads"
-//             | "-t"
-//             | "--include-path"
-//             | "--lsp"
-//             | "--ide-goto-def"
-//             | "--ide-hover"
-//             | "--ide-complete"
-//             | "--ide-check"
-//             | "--experimental-options" => args.next(),
-//             #[cfg(feature = "plugin")]
-//             "--plugins" => args.next(),
-//             _ => None,
-//         };
-
-//         args_to_nushell.push(arg);
-
-//         if let Some(flag_value) = flag_value {
-//             args_to_nushell.push(flag_value);
-//         }
-//     }
-
-//     let args_to_script = if !script_name.item.is_empty() {
-//         args.map(|arg| escape_for_script_arg(&arg)).collect()
-//     } else {
-//         Vec::default()
-//     };
-//     (args_to_nushell, script_name, args_to_script)
-// }
+use nu_parser::parse_internal_call;
+use nu_protocol::{engine::StateWorkingSet, report_parse_error};
+use nu_utils::stdout_write_all_and_flush;
 
 pub(crate) fn parse_commandline_args(
     engine_state: &mut EngineState,
 ) -> Result<NushellCliArgs, ShellError> {
-    let mut args = std::env::args();
-    let argv0 = args.next();
-    let commandline = std::iter::once("nu".to_string()).chain(args).join(" ");
+    // extract argv0 and replace it with "nu"
+    let mut args: Vec<String> = std::env::args().collect();
+    let argv0 = std::mem::replace(&mut args[0], "nu".to_string());
 
-    let (block, delta) = {
+    // get a string version of the commandline,
+    // and the spans corresponding to the args (so we don't need to re-lex)
+    let commandline = args.join(" ");
+    let next_span = engine_state.next_span_start();
+    let spans: Vec<Span> = args.into_iter().fold(vec![], |mut acc, arg| {
+        let start: usize = acc
+            .last()
+            .map(|last: &Span| last.end + 1)
+            .unwrap_or(next_span);
+        let end = start + arg.len();
+        acc.push(Span::new(start, end));
+        acc
+    });
+
+    let (call, delta) = {
         let mut working_set = StateWorkingSet::new(engine_state);
-        working_set.add_decl(Box::new(Nu));
+        let decl_id = working_set.add_decl(Box::new(Nu));
+        let _ = working_set.add_file("source".to_string(), commandline.as_bytes());
+        let call = parse_internal_call(&mut working_set, spans[0], &spans[1..], decl_id).call;
 
-        let output = parse(&mut working_set, None, commandline.as_bytes(), false);
         if let Some(err) = working_set.parse_errors.first() {
             report_parse_error(&working_set, err);
             std::process::exit(1);
         }
 
         working_set.hide_decl(b"nu");
-        (output, working_set.render())
+        (call, working_set.render())
     };
 
     engine_state.merge_delta(delta)?;
@@ -107,119 +44,103 @@ pub(crate) fn parse_commandline_args(
     let mut stack = Stack::new();
 
     // We should have a successful parse now
-    if let Some(pipeline) = block.pipelines.first() {
-        if let Some(Expr::Call(call)) = pipeline.elements.first().map(|e| &e.expr.expr) {
-            type StringArg = Option<Spanned<String>>;
-            type ListArg = Option<Vec<Spanned<String>>>;
+    type StringArg = Option<Spanned<String>>;
+    type ListArg = Option<Vec<Spanned<String>>>;
 
-            let login_shell = if argv0.is_some_and(|arg| arg.starts_with("-")) {
-                Some("--login".to_string().into_spanned(Span::unknown()))
-            } else {
-                call.get_named_arg("login")
-            };
+    let login_shell = if argv0.starts_with("-") {
+        Some("--login".to_string().into_spanned(Span::unknown()))
+    } else {
+        call.get_named_arg("login")
+    };
 
-            let redirect_stdin = call.get_named_arg("stdin");
-            let interactive_shell = call.get_named_arg("interactive");
-            let commands: StringArg = call.get_flag(engine_state, &mut stack, "commands")?;
-            let testbin: StringArg = call.get_flag(engine_state, &mut stack, "testbin")?;
-            #[cfg(feature = "plugin")]
-            let plugin_file: StringArg =
-                call.get_flag(engine_state, &mut stack, "plugin-config")?;
-            #[cfg(feature = "plugin")]
-            let plugins: ListArg = call.get_flag(engine_state, &mut stack, "plugins")?;
-            let no_config_file = call.get_named_arg("no-config-file");
-            let no_history = call.get_named_arg("no-history");
-            let no_std_lib = call.get_named_arg("no-std-lib");
-            let config_file: StringArg = call.get_flag(engine_state, &mut stack, "config")?;
-            let env_file: StringArg = call.get_flag(engine_state, &mut stack, "env-config")?;
-            let log_level: StringArg = call.get_flag(engine_state, &mut stack, "log-level")?;
-            let log_target: StringArg = call.get_flag(engine_state, &mut stack, "log-target")?;
-            let log_include: ListArg = call.get_flag(engine_state, &mut stack, "log-include")?;
-            let log_exclude: ListArg = call.get_flag(engine_state, &mut stack, "log-exclude")?;
-            let execute: StringArg = call.get_flag(engine_state, &mut stack, "execute")?;
-            let table_mode: Option<Value> =
-                call.get_flag(engine_state, &mut stack, "table-mode")?;
-            let error_style: Option<Value> =
-                call.get_flag(engine_state, &mut stack, "error-style")?;
-            let no_newline = call.get_named_arg("no-newline");
-            let experimental_options: ListArg =
-                call.get_flag(engine_state, &mut stack, "experimental-options")?;
+    let redirect_stdin = call.get_named_arg("stdin");
+    let interactive_shell = call.get_named_arg("interactive");
+    let commands: StringArg = call.get_flag(engine_state, &mut stack, "commands")?;
+    let testbin: StringArg = call.get_flag(engine_state, &mut stack, "testbin")?;
+    #[cfg(feature = "plugin")]
+    let plugin_file: StringArg = call.get_flag(engine_state, &mut stack, "plugin-config")?;
+    #[cfg(feature = "plugin")]
+    let plugins: ListArg = call.get_flag(engine_state, &mut stack, "plugins")?;
+    let no_config_file = call.get_named_arg("no-config-file");
+    let no_history = call.get_named_arg("no-history");
+    let no_std_lib = call.get_named_arg("no-std-lib");
+    let config_file: StringArg = call.get_flag(engine_state, &mut stack, "config")?;
+    let env_file: StringArg = call.get_flag(engine_state, &mut stack, "env-config")?;
+    let log_level: StringArg = call.get_flag(engine_state, &mut stack, "log-level")?;
+    let log_target: StringArg = call.get_flag(engine_state, &mut stack, "log-target")?;
+    let log_include: ListArg = call.get_flag(engine_state, &mut stack, "log-include")?;
+    let log_exclude: ListArg = call.get_flag(engine_state, &mut stack, "log-exclude")?;
+    let execute: StringArg = call.get_flag(engine_state, &mut stack, "execute")?;
+    let table_mode: Option<Value> = call.get_flag(engine_state, &mut stack, "table-mode")?;
+    let error_style: Option<Value> = call.get_flag(engine_state, &mut stack, "error-style")?;
+    let no_newline = call.get_named_arg("no-newline");
+    let experimental_options: ListArg =
+        call.get_flag(engine_state, &mut stack, "experimental-options")?;
 
-            // ide flags
-            let lsp = call.has_flag(engine_state, &mut stack, "lsp")?;
-            let include_path: StringArg =
-                call.get_flag(engine_state, &mut stack, "include-path")?;
-            let ide_goto_def: Option<Value> =
-                call.get_flag(engine_state, &mut stack, "ide-goto-def")?;
-            let ide_hover: Option<Value> = call.get_flag(engine_state, &mut stack, "ide-hover")?;
-            let ide_complete: Option<Value> =
-                call.get_flag(engine_state, &mut stack, "ide-complete")?;
-            let ide_check: Option<Value> = call.get_flag(engine_state, &mut stack, "ide-check")?;
-            let ide_ast: StringArg = call.get_named_arg("ide-ast");
+    // ide flags
+    let lsp = call.has_flag(engine_state, &mut stack, "lsp")?;
+    let include_path: StringArg = call.get_flag(engine_state, &mut stack, "include-path")?;
+    let ide_goto_def: Option<Value> = call.get_flag(engine_state, &mut stack, "ide-goto-def")?;
+    let ide_hover: Option<Value> = call.get_flag(engine_state, &mut stack, "ide-hover")?;
+    let ide_complete: Option<Value> = call.get_flag(engine_state, &mut stack, "ide-complete")?;
+    let ide_check: Option<Value> = call.get_flag(engine_state, &mut stack, "ide-check")?;
+    let ide_ast: StringArg = call.get_named_arg("ide-ast");
 
-            let script_file: Option<Spanned<String>> = call.opt(engine_state, &mut stack, 0)?;
-            let script_args: Vec<Spanned<String>> = call.rest(engine_state, &mut stack, 0)?;
+    let script_file: Option<Spanned<String>> = call.opt(engine_state, &mut stack, 0)?;
+    let script_args: Vec<Spanned<String>> = call.rest(engine_state, &mut stack, 0)?;
 
-            let help = call.has_flag(engine_state, &mut stack, "help")?;
+    let help = call.has_flag(engine_state, &mut stack, "help")?;
 
-            if help {
-                let full_help = get_full_help(&Nu, engine_state, &mut stack);
+    if help {
+        let full_help = get_full_help(&Nu, engine_state, &mut stack);
 
-                let _ = std::panic::catch_unwind(move || stdout_write_all_and_flush(full_help));
+        let _ = std::panic::catch_unwind(move || stdout_write_all_and_flush(full_help));
 
-                std::process::exit(0);
-            }
-
-            if call.has_flag(engine_state, &mut stack, "version")? {
-                let version = env!("CARGO_PKG_VERSION").to_string();
-                let _ = std::panic::catch_unwind(move || {
-                    stdout_write_all_and_flush(format!("{version}\n"))
-                });
-
-                std::process::exit(0);
-            }
-
-            return Ok(NushellCliArgs {
-                script_file,
-                script_args,
-                redirect_stdin,
-                login_shell,
-                interactive_shell,
-                commands,
-                testbin,
-                #[cfg(feature = "plugin")]
-                plugin_file,
-                #[cfg(feature = "plugin")]
-                plugins,
-                no_config_file,
-                no_history,
-                no_std_lib,
-                config_file,
-                env_file,
-                log_level,
-                log_target,
-                log_include,
-                log_exclude,
-                execute,
-                include_path,
-                ide_goto_def,
-                ide_hover,
-                ide_complete,
-                lsp,
-                ide_check,
-                ide_ast,
-                table_mode,
-                error_style,
-                no_newline,
-                experimental_options,
-            });
-        }
+        std::process::exit(0);
     }
 
-    // Just give the help and exit if the above fails
-    let full_help = get_full_help(&Nu, engine_state, &mut stack);
-    print!("{full_help}");
-    std::process::exit(1);
+    if call.has_flag(engine_state, &mut stack, "version")? {
+        let version = env!("CARGO_PKG_VERSION").to_string();
+        let _ =
+            std::panic::catch_unwind(move || stdout_write_all_and_flush(format!("{version}\n")));
+
+        std::process::exit(0);
+    }
+
+    return Ok(NushellCliArgs {
+        script_file,
+        script_args,
+        redirect_stdin,
+        login_shell,
+        interactive_shell,
+        commands,
+        testbin,
+        #[cfg(feature = "plugin")]
+        plugin_file,
+        #[cfg(feature = "plugin")]
+        plugins,
+        no_config_file,
+        no_history,
+        no_std_lib,
+        config_file,
+        env_file,
+        log_level,
+        log_target,
+        log_include,
+        log_exclude,
+        execute,
+        include_path,
+        ide_goto_def,
+        ide_hover,
+        ide_complete,
+        lsp,
+        ide_check,
+        ide_ast,
+        table_mode,
+        error_style,
+        no_newline,
+        experimental_options,
+    });
 }
 
 #[derive(Clone)]
@@ -432,6 +353,7 @@ impl Command for Nu {
                 SyntaxShape::String,
                 "parameters to the script file",
             )
+            .allows_unknown_args()
             .category(Category::System);
 
         signature
